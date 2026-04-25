@@ -1,0 +1,10 @@
+/media/duong/WD 500GB ELEMENTS/KLTN/fcw-system/build/CMakeFiles/install/strip.dir
+/media/duong/WD 500GB ELEMENTS/KLTN/fcw-system/build/CMakeFiles/install.dir
+/media/duong/WD 500GB ELEMENTS/KLTN/fcw-system/build/CMakeFiles/list_install_components.dir
+/media/duong/WD 500GB ELEMENTS/KLTN/fcw-system/build/CMakeFiles/fcw_system.dir
+/media/duong/WD 500GB ELEMENTS/KLTN/fcw-system/build/CMakeFiles/run_demo.dir
+/media/duong/WD 500GB ELEMENTS/KLTN/fcw-system/build/CMakeFiles/fcw_lib.dir
+/media/duong/WD 500GB ELEMENTS/KLTN/fcw-system/build/CMakeFiles/install/local.dir
+/media/duong/WD 500GB ELEMENTS/KLTN/fcw-system/build/CMakeFiles/convert_model.dir
+/media/duong/WD 500GB ELEMENTS/KLTN/fcw-system/build/CMakeFiles/edit_cache.dir
+/media/duong/WD 500GB ELEMENTS/KLTN/fcw-system/build/CMakeFiles/rebuild_cache.dir

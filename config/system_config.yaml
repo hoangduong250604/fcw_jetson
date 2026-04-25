@@ -1,0 +1,98 @@
+# ==============================================================================
+# System Configuration - Forward Collision Warning System
+# ==============================================================================
+
+system:
+  name: "FCW-System"
+  version: "1.0.0"
+  
+  # Pipeline configuration
+  pipeline:
+    enable_detection: true
+    enable_tracking: true
+    enable_distance: true
+    enable_ttc: true
+    enable_warning: true
+    enable_visualization: true
+    
+  # Input source
+  input:
+    # "camera", "video", "image_dir"
+    type: "video"
+    # Camera device ID or video path
+    source: "./datasets/kitti/test_video.mp4"
+    # Resize input (0 = no resize, use original)
+    width: 1280
+    height: 720
+    fps: 30
+
+  # Output
+  output:
+    save_video: true
+    save_log: true
+    video_path: "./results/videos/output.avi"
+    log_path: "./results/logs/system.log"
+
+  # Performance
+  performance:
+    # Target FPS (0 = unlimited)
+    target_fps: 15
+    # Use GPU acceleration
+    use_gpu: true
+    # GPU device ID
+    gpu_device: 0
+
+# Detection model configuration
+detection:
+  model_path: "../yolov8n.engine"
+  labels_path: "../labels.txt"
+  # Input size for YOLO
+  input_width: 640
+  input_height: 640
+  # Confidence threshold
+  conf_threshold: 0.45
+  # NMS IoU threshold
+  nms_threshold: 0.50
+  # Maximum detections
+  max_detections: 100
+  # Classes to detect (BDD100K 12-class indices)
+  # 0=pedestrian, 1=rider, 2=car, 3=truck, 4=bus, 6=motorcycle, 10=trailer, 11=other vehicle
+  target_classes: [0, 1, 2, 3, 4, 6, 10, 11]
+  # Half precision (FP16) on Jetson
+  use_fp16: true
+
+# Tracking configuration
+tracking:
+  # Maximum distance threshold for association (pixels)
+  max_distance: 100.0
+  # Maximum frames to keep lost track
+  max_lost: 30
+  # Minimum hits before track is confirmed
+  min_hits: 3
+  # IoU threshold for Hungarian matching
+  iou_threshold: 0.3
+  # Use Kalman filter for prediction
+  use_kalman: true
+
+# Distance estimation
+distance:
+  # Method: "pinhole", "bbox_height", "stereo", "bev"
+  method: "bbox_height"
+  # Known average vehicle height (meters)
+  reference_height: 1.5
+  # Maximum reliable distance (meters)
+  max_distance: 100.0
+  # Minimum reliable distance (meters)
+  min_distance: 2.0
+  
+  # BEV (Bird's Eye View) calibration (used when method="bev")
+  bev:
+    # 4 calibration points in image (x,y pixels)
+    image_points:
+      - [490, 450]   # top-left
+      - [790, 450]   # top-right
+      - [1200, 700]  # bottom-right
+      - [80, 700]    # bottom-left
+    # Real-world dimensions of the calibration region
+    real_width: 3.7    # meters (lane width)
+    real_height: 30.0  # meters (depth)

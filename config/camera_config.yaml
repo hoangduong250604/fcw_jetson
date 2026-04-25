@@ -1,0 +1,40 @@
+# ==============================================================================
+# Camera Configuration
+# ==============================================================================
+
+camera:
+  # Camera intrinsic parameters (from KITTI calibration)
+  intrinsic:
+    fx: 721.5377    # Focal length x (pixels)
+    fy: 721.5377    # Focal length y (pixels)
+    cx: 609.5593    # Principal point x (pixels)
+    cy: 172.854     # Principal point y (pixels)
+
+  # Image dimensions
+  image:
+    width: 1242
+    height: 375
+
+  # Distortion coefficients (k1, k2, p1, p2, k3)
+  distortion:
+    k1: 0.0
+    k2: 0.0
+    p1: 0.0
+    p2: 0.0
+    k3: 0.0
+
+  # Camera mounting position relative to vehicle
+  mounting:
+    height: 1.65        # Height from ground (meters)
+    pitch_angle: 0.0    # Downward tilt (degrees)
+    yaw_angle: 0.0      # Left-right rotation (degrees)
+
+  # CSI Camera settings for Jetson Nano
+  csi:
+    sensor_id: 0
+    capture_width: 1280
+    capture_height: 720
+    display_width: 1280
+    display_height: 720
+    framerate: 30
+    flip_method: 0

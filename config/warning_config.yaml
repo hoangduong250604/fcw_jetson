@@ -1,0 +1,51 @@
+# ==============================================================================
+# Warning Configuration
+# ==============================================================================
+
+warning:
+  # TTC thresholds (seconds)
+  ttc:
+    # Critical: immediate collision threat
+    critical_threshold: 1.5
+    # Danger: high risk of collision
+    danger_threshold: 3.0
+    # Caution: moderate risk
+    caution_threshold: 5.0
+    # Minimum valid TTC (below this = collision imminent)
+    min_valid_ttc: 0.5
+
+  # Risk assessment
+  risk:
+    # Enable risk level smoothing (prevents flickering)
+    enable_smoothing: true
+    # Number of frames for smoothing window
+    smoothing_window: 5
+    # Minimum consecutive frames at risk level before triggering
+    min_consecutive_frames: 3
+
+  # Audio alert
+  audio:
+    enabled: true
+    # Alert sound files
+    critical_sound: "./assets/sounds/critical.wav"
+    danger_sound: "./assets/sounds/danger.wav"
+    caution_sound: "./assets/sounds/caution.wav"
+    # Repeat interval (milliseconds)
+    repeat_interval_ms: 500
+
+  # Visual alert
+  visual:
+    enabled: true
+    # Colors (BGR format)
+    color_safe: [0, 255, 0]       # Green
+    color_caution: [0, 255, 255]  # Yellow
+    color_danger: [0, 165, 255]   # Orange
+    color_critical: [0, 0, 255]   # Red
+    # Overlay opacity
+    overlay_alpha: 0.3
+    # Show distance text
+    show_distance: true
+    # Show TTC text
+    show_ttc: true
+    # Show speed text
+    show_speed: true

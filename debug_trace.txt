@@ -1,0 +1,8 @@
+FCW main() started. argc=4
+  argv[0]=./build/fcw_system
+  argv[1]=--video
+  argv[2]=../video_data/2011_09_26_drive_0001_sync.avi
+  argv[3]=../yolov8n.engine
+Before pipeline.init() video=../video_data/2011_09_26_drive_0001_sync.avi
+Model=./models/yolov8s.onnx
+pipeline.init() SUCCESS

@@ -1,0 +1,38 @@
+# BDD100K Dataset Configuration for YOLOv8
+# ===========================================
+# Forward Collision Warning System
+# 10 driving-related object classes
+#
+# Usage:
+#   yolo train data=bdd100k.yaml model=yolov8n.pt epochs=100 imgsz=640
+#
+# Dataset structure (after conversion):
+#   bdd100k_yolo/
+#   ├── images/
+#   │   ├── train/    # 70K training images
+#   │   └── val/      # 10K validation images
+#   ├── labels/
+#   │   ├── train/    # YOLO TXT labels
+#   │   └── val/
+#   └── bdd100k.yaml  # this file
+
+# Dataset root directory
+path: c:\VScode\KLTN\BDD100K\VOCdevkit
+train: images/train
+val: images/val
+
+# 12 BDD100K classes (extended variant)
+nc: 12
+names:
+  0: pedestrian
+  1: rider
+  2: car
+  3: truck
+  4: bus
+  5: train
+  6: motorcycle
+  7: bicycle
+  8: traffic light
+  9: traffic sign
+  10: trailer
+  11: other vehicle
