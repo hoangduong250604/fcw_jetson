@@ -115,6 +115,15 @@ bool Pipeline::loadConfig(const std::string& systemConfigPath,
             config_.cameraModel.mountHeight = cam["mounting"]["height"].as<float>(1.65f);
             config_.cameraModel.pitchAngle = cam["mounting"]["pitch_angle"].as<float>(0.0f)
                                               * static_cast<float>(M_PI) / 180.0f;
+
+            // Load CSI camera settings for Jetson Nano
+            if (cam["csi"]) {
+                config_.csiSensorId = cam["csi"]["sensor_id"].as<int>(0);
+                config_.csiCaptureWidth = cam["csi"]["capture_width"].as<int>(1280);
+                config_.csiCaptureHeight = cam["csi"]["capture_height"].as<int>(720);
+                config_.csiFps = cam["csi"]["framerate"].as<int>(30);
+                config_.csiFlipMethod = cam["csi"]["flip_method"].as<int>(0);
+            }
         }
 
         // Warning config
@@ -170,7 +179,23 @@ bool Pipeline::init(const PipelineConfig& config) {
             return false;
         }
     } else if (config_.inputType == "camera") {
-        if (!camera_.openCSI()) {
+        bool cameraOk = false;
+        if (config_.cameraType == "usb") {
+            int devId = 0;
+            if (!config_.inputSource.empty()) {
+                try { devId = std::stoi(config_.inputSource); } catch (...) {}
+            }
+            LOG_INFO("Pipeline", "Opening USB camera device " + std::to_string(devId));
+            cameraOk = camera_.openUSB(devId, config_.inputWidth, config_.inputHeight);
+        } else {
+            LOG_INFO("Pipeline", "Opening CSI camera sensor " + std::to_string(config_.csiSensorId));
+            cameraOk = camera_.openCSI(config_.csiSensorId,
+                                        config_.csiCaptureWidth,
+                                        config_.csiCaptureHeight,
+                                        config_.csiFps,
+                                        config_.csiFlipMethod);
+        }
+        if (!cameraOk) {
             LOG_ERROR("Pipeline", "Failed to open camera");
             return false;
         }

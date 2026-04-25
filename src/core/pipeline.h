@@ -34,8 +34,16 @@ struct PipelineConfig {
     // Input
     std::string inputType = "video";     // "camera", "video", "image_dir"
     std::string inputSource;
+    std::string cameraType = "csi";      // "csi" or "usb"
     int inputWidth = 1280;
     int inputHeight = 720;
+
+    // CSI camera settings (Jetson Nano)
+    int csiSensorId = 0;
+    int csiCaptureWidth = 1280;
+    int csiCaptureHeight = 720;
+    int csiFps = 30;
+    int csiFlipMethod = 0;
 
     // KITTI OXTS ground truth (for ego speed)
     std::string kittiRoot;               // Path to KITTI/ folder (auto-detect OXTS)

@@ -53,8 +53,13 @@ endif()
 # ============================================================================
 # Backend Options
 # ============================================================================
-option(USE_TENSORRT "Enable TensorRT backend (requires CUDA + TensorRT)" OFF)
-option(USE_ONNXRUNTIME "Enable ONNX Runtime backend" ON)
+if(PLATFORM_JETSON)
+    option(USE_TENSORRT "Enable TensorRT backend (requires CUDA + TensorRT)" ON)
+    option(USE_ONNXRUNTIME "Enable ONNX Runtime backend" OFF)
+else()
+    option(USE_TENSORRT "Enable TensorRT backend (requires CUDA + TensorRT)" OFF)
+    option(USE_ONNXRUNTIME "Enable ONNX Runtime backend" ON)
+endif()
 
 # ============================================================================
 # ONNX Runtime
@@ -86,16 +91,22 @@ if(USE_TENSORRT)
 
     # CUDA
     find_path(CUDA_INCLUDE_DIR cuda_runtime_api.h
-        HINTS ${CUDA_TOOLKIT_ROOT_DIR} "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v13.2"
+        HINTS ${CUDA_TOOLKIT_ROOT_DIR}
+              /usr/local/cuda
+              "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v13.2"
         PATH_SUFFIXES include
     )
     find_library(CUDA_RUNTIME_LIBRARY NAMES cudart
-        HINTS ${CUDA_TOOLKIT_ROOT_DIR} "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v13.2"
+        HINTS ${CUDA_TOOLKIT_ROOT_DIR}
+              /usr/local/cuda
+              "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v13.2"
         PATH_SUFFIXES lib lib64 lib/x64
     )
     if(NOT CUDA_RUNTIME_LIBRARY)
         find_library(CUDA_RUNTIME_LIBRARY NAMES cudart_static
-            HINTS ${CUDA_TOOLKIT_ROOT_DIR} "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v13.2"
+            HINTS ${CUDA_TOOLKIT_ROOT_DIR}
+                  /usr/local/cuda
+                  "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v13.2"
             PATH_SUFFIXES lib lib64 lib/x64
         )
     endif()
@@ -127,23 +138,34 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 if(USE_TENSORRT)
 find_path(TENSORRT_INCLUDE_DIR NvInfer.h
     HINTS ${TENSORRT_ROOT} ${CUDA_TOOLKIT_ROOT_DIR}
+          /usr/include/aarch64-linux-gnu
+          /usr/include/x86_64-linux-gnu
+          /usr/include
     PATH_SUFFIXES include
 )
 # TensorRT libraries - support both Linux (nvinfer) and Windows (nvinfer_10) naming
 find_library(TENSORRT_LIBRARY_INFER NAMES nvinfer nvinfer_10
     HINTS ${TENSORRT_ROOT} ${CUDA_TOOLKIT_ROOT_DIR}
+          /usr/lib/aarch64-linux-gnu
+          /usr/lib/x86_64-linux-gnu
     PATH_SUFFIXES lib lib64 lib/x86_64-linux-gnu
 )
 find_library(TENSORRT_LIBRARY_INFER_PLUGIN NAMES nvinfer_plugin nvinfer_plugin_10
     HINTS ${TENSORRT_ROOT} ${CUDA_TOOLKIT_ROOT_DIR}
+          /usr/lib/aarch64-linux-gnu
+          /usr/lib/x86_64-linux-gnu
     PATH_SUFFIXES lib lib64 lib/x86_64-linux-gnu
 )
 find_library(TENSORRT_LIBRARY_PARSERS NAMES nvparsers nvparsers_10
     HINTS ${TENSORRT_ROOT} ${CUDA_TOOLKIT_ROOT_DIR}
+          /usr/lib/aarch64-linux-gnu
+          /usr/lib/x86_64-linux-gnu
     PATH_SUFFIXES lib lib64 lib/x86_64-linux-gnu
 )
 find_library(TENSORRT_LIBRARY_ONNX NAMES nvonnxparser nvonnxparser_10
     HINTS ${TENSORRT_ROOT} ${CUDA_TOOLKIT_ROOT_DIR}
+          /usr/lib/aarch64-linux-gnu
+          /usr/lib/x86_64-linux-gnu
     PATH_SUFFIXES lib lib64 lib/x86_64-linux-gnu
 )
 

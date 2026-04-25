@@ -19,6 +19,21 @@
 #include <string>
 #include <fstream>
 
+// Auto-detect best model: prefer .engine (TensorRT) over .onnx
+static std::string findModelPath() {
+    const char* candidates[] = {
+        "./models/yolov8s.engine",
+        "./models/yolov8n.engine",
+        "./models/yolov8s.onnx",
+        "./models/yolov8n.onnx"
+    };
+    for (const auto& path : candidates) {
+        std::ifstream f(path);
+        if (f.good()) return path;
+    }
+    return "./models/yolov8s.onnx";
+}
+
 void printUsage(const char* progName) {
     std::cout << "\n";
     std::cout << "========================================\n";
@@ -29,16 +44,23 @@ void printUsage(const char* progName) {
     std::cout << "Usage:\n";
     std::cout << "  " << progName << " --config <system_config.yaml> [--camera-config <camera_config.yaml>] [--warning-config <warning_config.yaml>]\n";
     std::cout << "  " << progName << " --video <path_to_video>\n";
-    std::cout << "  " << progName << " --camera <device_id>\n";
+    std::cout << "  " << progName << " --camera <device_id> [--usb]\n";
     std::cout << "\n";
     std::cout << "Options:\n";
     std::cout << "  --config, -c       Path to system_config.yaml\n";
     std::cout << "  --camera-config    Path to camera_config.yaml\n";
     std::cout << "  --warning-config   Path to warning_config.yaml\n";
     std::cout << "  --video, -v        Direct path to input video\n";
-    std::cout << "  --camera           Camera device ID (default: 0)\n";
+    std::cout << "  --camera           Camera device ID (default: 0, CSI by default)\n";
+    std::cout << "  --usb              Use USB camera instead of CSI\n";
     std::cout << "  --threaded         Enable multi-threaded pipeline\n";
     std::cout << "  --help, -h         Show this help message\n";
+    std::cout << "\n";
+    std::cout << "Examples:\n";
+    std::cout << "  " << progName << " --camera 0                  # CSI camera on Jetson Nano\n";
+    std::cout << "  " << progName << " --camera 0 --usb            # USB webcam\n";
+    std::cout << "  " << progName << " --camera 0 --threaded       # CSI + multi-threaded\n";
+    std::cout << "  " << progName << " --video test.mp4            # Video file\n";
     std::cout << "\n";
 }
 
@@ -58,6 +80,7 @@ int main(int argc, char* argv[]) {
     std::string videoPath;
     int cameraId = -1;
     bool useThreaded = false;
+    bool useUSB = false;
     std::string oxtsFolder;
     std::string kittiRoot;
 
@@ -73,6 +96,8 @@ int main(int argc, char* argv[]) {
             videoPath = argv[++i];
         } else if (arg == "--camera" && i + 1 < argc) {
             cameraId = std::stoi(argv[++i]);
+        } else if (arg == "--usb") {
+            useUSB = true;
         } else if (arg == "--threaded") {
             useThreaded = true;
         } else if (arg == "--oxts" && i + 1 < argc) {
@@ -111,7 +136,7 @@ int main(int argc, char* argv[]) {
         fcw::PipelineConfig config;
         config.inputType = "video";
         config.inputSource = videoPath;
-        config.detectorConfig.modelPath = "./models/yolov8s.onnx";
+        config.detectorConfig.modelPath = findModelPath();
         config.detectorConfig.labelsPath = "./models/labels.txt";
         config.oxtsDataFolder = oxtsFolder;
         config.kittiRoot = kittiRoot;
@@ -140,6 +165,10 @@ int main(int argc, char* argv[]) {
         fcw::PipelineConfig config;
         config.inputType = "camera";
         config.inputSource = std::to_string(cameraId);
+        config.cameraType = useUSB ? "usb" : "csi";
+        config.detectorConfig.modelPath = findModelPath();
+        config.detectorConfig.labelsPath = "./models/labels.txt";
+        LOG_INFO("Main", "Camera mode - model: " + config.detectorConfig.modelPath);
 
         if (!pipeline.init(config)) {
             LOG_FATAL("Main", "Failed to initialize pipeline");
@@ -173,8 +202,20 @@ int main(int argc, char* argv[]) {
             fcw::ThreadedPipelineConfig tConfig;
             tConfig.baseConfig.inputType = "video";
             tConfig.baseConfig.inputSource = videoPath;
-            tConfig.baseConfig.detectorConfig.modelPath = "./models/yolov8s.onnx";
+            tConfig.baseConfig.detectorConfig.modelPath = findModelPath();
             tConfig.baseConfig.detectorConfig.labelsPath = "./models/labels.txt";
+            if (!threadedPipeline.init(tConfig)) {
+                LOG_FATAL("Main", "Failed to initialize threaded pipeline");
+                return 1;
+            }
+        } else if (cameraId >= 0) {
+            fcw::ThreadedPipelineConfig tConfig;
+            tConfig.baseConfig.inputType = "camera";
+            tConfig.baseConfig.inputSource = std::to_string(cameraId);
+            tConfig.baseConfig.cameraType = useUSB ? "usb" : "csi";
+            tConfig.baseConfig.detectorConfig.modelPath = findModelPath();
+            tConfig.baseConfig.detectorConfig.labelsPath = "./models/labels.txt";
+            LOG_INFO("Main", "Threaded camera mode - model: " + tConfig.baseConfig.detectorConfig.modelPath);
             if (!threadedPipeline.init(tConfig)) {
                 LOG_FATAL("Main", "Failed to initialize threaded pipeline");
                 return 1;

@@ -394,8 +394,12 @@ bool YOLOv8Detector::loadEngine(const std::string& enginePath) {
         return false;
     }
 
-    LOG_INFO("Detector", "Engine loaded successfully. IO Tensors: " +
+    LOG_INFO("Detector", "Engine loaded successfully. Bindings: " +
+#if NV_TENSORRT_MAJOR >= 10
              std::to_string(engine_->getNbIOTensors()));
+#else
+             std::to_string(engine_->getNbBindings()));
+#endif
     return true;
 }
 
@@ -464,6 +468,8 @@ bool YOLOv8Detector::saveEngine(const std::string& enginePath) {
 // Buffer Management (TensorRT)
 // ==============================================================================
 bool YOLOv8Detector::allocateBuffers() {
+#if NV_TENSORRT_MAJOR >= 10
+    // TensorRT 10+ API
     nvinfer1::Dims inputDims = engine_->getTensorShape(engine_->getIOTensorName(0));
     batchSize_ = inputDims.d[0];
     int channels = inputDims.d[1];
@@ -476,6 +482,27 @@ bool YOLOv8Detector::allocateBuffers() {
     nvinfer1::Dims outputDims = engine_->getTensorShape(engine_->getIOTensorName(1));
     int outputDim1 = outputDims.d[1];
     int outputDim2 = outputDims.d[2];
+#else
+    // TensorRT 7/8 API (Jetson Nano JetPack 4.x)
+    inputIndex_ = engine_->getBindingIndex("images");
+    outputIndex_ = engine_->getBindingIndex("output0");
+    // Fallback: if named bindings not found, use index 0 and 1
+    if (inputIndex_ < 0) inputIndex_ = 0;
+    if (outputIndex_ < 0) outputIndex_ = 1;
+
+    nvinfer1::Dims inputDims = engine_->getBindingDimensions(inputIndex_);
+    batchSize_ = (inputDims.d[0] > 0) ? inputDims.d[0] : 1;
+    int channels = inputDims.d[1];
+    int inputH = inputDims.d[2];
+    int inputW = inputDims.d[3];
+
+    inputSize_ = batchSize_ * channels * inputH * inputW * sizeof(float);
+    hostInput_.resize(batchSize_ * channels * inputH * inputW);
+
+    nvinfer1::Dims outputDims = engine_->getBindingDimensions(outputIndex_);
+    int outputDim1 = outputDims.d[1];
+    int outputDim2 = outputDims.d[2];
+#endif
 
     numClasses_ = outputDim1 - 4;
     numAnchors_ = outputDim2;
@@ -515,9 +542,19 @@ bool YOLOv8Detector::executeInference(float* inputBuffer, float* outputBuffer) {
     (void)inputBuffer;
     (void)outputBuffer;
 
+#if NV_TENSORRT_MAJOR >= 10
+    // TensorRT 10+ API: must set tensor addresses explicitly
+    const char* inputName = engine_->getIOTensorName(0);
+    const char* outputName = engine_->getIOTensorName(1);
+    context_->setTensorAddress(inputName, buffers_[inputIndex_]);
+    context_->setTensorAddress(outputName, buffers_[outputIndex_]);
     bool success = context_->enqueueV3(stream_);
+#else
+    // TensorRT 7/8 API (Jetson Nano)
+    bool success = context_->enqueueV2(buffers_, stream_, nullptr);
+#endif
     if (!success) {
-        LOG_ERROR("Detector", "TensorRT enqueueV3 failed");
+        LOG_ERROR("Detector", "TensorRT inference failed");
         return false;
     }
     return true;

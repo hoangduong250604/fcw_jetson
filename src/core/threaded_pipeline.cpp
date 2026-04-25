@@ -67,7 +67,23 @@ bool ThreadedPipeline::init(const ThreadedPipelineConfig& config) {
             return false;
         }
     } else if (cfg.inputType == "camera") {
-        if (!camera_.openCSI()) {
+        bool cameraOk = false;
+        if (cfg.cameraType == "usb") {
+            int devId = 0;
+            if (!cfg.inputSource.empty()) {
+                try { devId = std::stoi(cfg.inputSource); } catch (...) {}
+            }
+            LOG_INFO("ThreadedPipeline", "Opening USB camera device " + std::to_string(devId));
+            cameraOk = camera_.openUSB(devId, cfg.inputWidth, cfg.inputHeight);
+        } else {
+            LOG_INFO("ThreadedPipeline", "Opening CSI camera sensor " + std::to_string(cfg.csiSensorId));
+            cameraOk = camera_.openCSI(cfg.csiSensorId,
+                                        cfg.csiCaptureWidth,
+                                        cfg.csiCaptureHeight,
+                                        cfg.csiFps,
+                                        cfg.csiFlipMethod);
+        }
+        if (!cameraOk) {
             LOG_ERROR("ThreadedPipeline", "Failed to open camera");
             return false;
         }
