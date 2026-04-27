@@ -120,6 +120,11 @@ private:
     std::condition_variable warningCv_;
     RiskAssessment latestRisk_;
     bool hasNewRisk_ = false;
+
+    // Audio linger: keep playing for a bit after risk clears
+    int64_t lastActiveTimeMs_ = 0;       // Last time risk > SAFE was seen
+    bool audioPlaying_ = false;          // Is audio currently playing
+    static constexpr int kAudioLingerMs = 3000;  // 3 seconds linger
 };
 
 } // namespace fcw

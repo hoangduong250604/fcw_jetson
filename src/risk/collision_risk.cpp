@@ -102,9 +102,6 @@ RiskAssessment CollisionRisk::getHighestRisk() const {
     highest.ttc = 999.0f;
 
     for (const auto& [id, ra] : risks_) {
-        // Only consider in-path vehicles for highest risk
-        if (!ra.inEgoPath) continue;
-        
         if (ra.level > highest.level ||
             (ra.level == highest.level && ra.ttc < highest.ttc)) {
             highest = ra;

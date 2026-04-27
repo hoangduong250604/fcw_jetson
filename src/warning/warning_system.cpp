@@ -37,16 +37,16 @@ WarningSystem::~WarningSystem() {
 void WarningSystem::pushWarning(const RiskAssessment& risk) {
     currentLevel_.store(risk.level);
 
-    if (risk.level == RiskLevel::SAFE) return;
-    if (!config_.audioEnabled || muted_.load()) return;
-
-    // Queue for warning thread
+    // Always notify thread (even for SAFE, so it can stop audio after linger)
     {
         std::lock_guard<std::mutex> lock(warningMutex_);
         latestRisk_ = risk;
         hasNewRisk_ = true;
     }
     warningCv_.notify_one();
+
+    if (risk.level == RiskLevel::SAFE) return;
+    if (!config_.audioEnabled || muted_.load()) return;
 
     // If thread not running, play inline (fallback for single-threaded Pipeline)
     if (!threadRunning_.load()) {
@@ -113,13 +113,32 @@ void WarningSystem::warningThreadFunc() {
             });
 
             if (threadShouldStop_.load()) break;
-            if (!hasNewRisk_) continue;
+            if (!hasNewRisk_) {
+                // No new data — check if audio linger expired
+                if (audioPlaying_) {
+                    int64_t now = nowMs();
+                    if (now - lastActiveTimeMs_ > kAudioLingerMs) {
+#ifndef _WIN32
+                        // Kill any lingering aplay processes
+                        system("killall -q aplay 2>/dev/null");
+#endif
+                        audioPlaying_ = false;
+                    }
+                }
+                continue;
+            }
 
             risk = latestRisk_;
             hasNewRisk_ = false;
         }
 
-        if (risk.level == RiskLevel::SAFE) continue;
+        if (risk.level == RiskLevel::SAFE) {
+            // Don't stop immediately — let audio linger
+            continue;
+        }
+
+        // Active risk — update last active time
+        lastActiveTimeMs_ = nowMs();
         if (muted_.load()) continue;
 
         // Cooldown check (per risk level)
@@ -139,6 +158,7 @@ void WarningSystem::warningThreadFunc() {
 
         // Play audio
         playAudio(risk.level);
+        audioPlaying_ = true;
 
         LOG_WARNING("Warning", "ALERT [" + riskLevelToString(risk.level) + "] "
                     "Track:" + std::to_string(risk.trackId) +

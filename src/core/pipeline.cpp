@@ -386,9 +386,7 @@ bool Pipeline::processFrame() {
     // ---- 8. Warning ----
     if (config_.enableWarning) {
         RiskAssessment highest = riskAssessor_.getHighestRisk();
-        if (highest.level > RiskLevel::SAFE) {
-            warningSystem_.trigger(highest);
-        }
+        warningSystem_.trigger(highest);
     }
 
     // ---- 9. Visualization ----
