@@ -13,6 +13,7 @@
 
 #include "pipeline.h"
 #include "threaded_pipeline.h"
+#include "gui_app.h"
 #include "logger.h"
 
 #include <iostream>
@@ -54,6 +55,8 @@ void printUsage(const char* progName) {
     std::cout << "  --camera           Camera device ID (default: 0, CSI by default)\n";
     std::cout << "  --usb              Use USB camera instead of CSI\n";
     std::cout << "  --threaded         Enable multi-threaded pipeline\n";
+    std::cout << "  --gui              Launch graphical user interface\n";
+    std::cout << "  --video-dir        Directory containing video files (for GUI)\n";
     std::cout << "  --help, -h         Show this help message\n";
     std::cout << "\n";
     std::cout << "Examples:\n";
@@ -81,8 +84,10 @@ int main(int argc, char* argv[]) {
     int cameraId = -1;
     bool useThreaded = false;
     bool useUSB = false;
+    bool useGui = false;
     std::string oxtsFolder;
     std::string kittiRoot;
+    std::string videoDir;
 
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
@@ -100,6 +105,10 @@ int main(int argc, char* argv[]) {
             useUSB = true;
         } else if (arg == "--threaded") {
             useThreaded = true;
+        } else if (arg == "--gui") {
+            useGui = true;
+        } else if (arg == "--video-dir" && i + 1 < argc) {
+            videoDir = argv[++i];
         } else if (arg == "--oxts" && i + 1 < argc) {
             oxtsFolder = argv[++i];
         } else if (arg == "--kitti-root" && i + 1 < argc) {
@@ -115,6 +124,18 @@ int main(int argc, char* argv[]) {
     fcw::utils::Logger::getInstance().init("./results/logs/system.log",
                                             fcw::utils::LogLevel::INFO);
     LOG_INFO("Main", "FCW System starting...");
+
+    // ---- GUI Mode ----
+    if (useGui) {
+        LOG_INFO("Main", "Launching GUI...");
+        fcw::gui::GuiApp gui;
+        if (!videoDir.empty()) gui.setVideoDir(videoDir);
+        if (!kittiRoot.empty()) gui.setKittiRoot(kittiRoot);
+        else gui.setKittiRoot("../KITTI");
+        gui.setConfigDir("./config");
+        return gui.run();
+    }
+
     std::cout << "[DEBUG] Creating pipeline..." << std::endl;
     fcw::Pipeline pipeline;
 

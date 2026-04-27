@@ -155,6 +155,27 @@ bool Pipeline::loadConfig(const std::string& systemConfigPath,
 }
 
 // ==============================================================================
+// Override methods (for GUI)
+// ==============================================================================
+void Pipeline::overrideInput(const std::string& type, const std::string& source) {
+    config_.inputType = type;
+    config_.inputSource = source;
+}
+
+void Pipeline::overrideCameraType(const std::string& camType) {
+    config_.cameraType = camType;
+}
+
+void Pipeline::overrideKittiRoot(const std::string& root) {
+    config_.kittiRoot = root;
+}
+
+void Pipeline::overrideModel(const std::string& modelPath, const std::string& labelsPath) {
+    config_.detectorConfig.modelPath = modelPath;
+    config_.detectorConfig.labelsPath = labelsPath;
+}
+
+// ==============================================================================
 // Initialization
 // ==============================================================================
 bool Pipeline::initFromLoadedConfig() {

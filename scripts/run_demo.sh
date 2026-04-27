@@ -46,10 +46,14 @@ mkdir -p "${PROJECT_DIR}/results/logs" "${PROJECT_DIR}/results/videos"
 
 # Find default video if no args specify input
 HAS_INPUT=false
+HAS_GUI=false
 for arg in "$@"; do
     if [[ "${arg}" == "--video" || "${arg}" == "--camera" ]]; then
         HAS_INPUT=true
-        break
+    fi
+    if [[ "${arg}" == "--gui" ]]; then
+        HAS_GUI=true
+        HAS_INPUT=true
     fi
 done
 
@@ -61,7 +65,9 @@ echo ""
 
 # Run
 cd "${PROJECT_DIR}"
-if [ "${HAS_INPUT}" = true ]; then
+if [ "${HAS_GUI}" = true ]; then
+    ${BIN} --gui --video-dir "${VIDEO_DIR}" --kitti-root "${ROOT_DIR}/KITTI" "$@"
+elif [ "${HAS_INPUT}" = true ]; then
     ${BIN} "$@"
 else
     # Use default video

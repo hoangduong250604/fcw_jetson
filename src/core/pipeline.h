@@ -98,6 +98,26 @@ public:
                     const std::string& warningConfigPath = "");
 
     /**
+     * Override input type/source after loadConfig (for GUI).
+     */
+    void overrideInput(const std::string& type, const std::string& source);
+
+    /**
+     * Override camera type (csi/usb) after loadConfig.
+     */
+    void overrideCameraType(const std::string& camType);
+
+    /**
+     * Override KITTI root path after loadConfig.
+     */
+    void overrideKittiRoot(const std::string& root);
+
+    /**
+     * Override model/labels paths after loadConfig.
+     */
+    void overrideModel(const std::string& modelPath, const std::string& labelsPath);
+
+    /**
      * Run the pipeline (main loop).
      * Processes frames until input ends or user quits.
      */

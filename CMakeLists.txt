@@ -217,6 +217,7 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/src/warning
     ${CMAKE_SOURCE_DIR}/src/visualization
     ${CMAKE_SOURCE_DIR}/src/utils
+    ${CMAKE_SOURCE_DIR}/src/gui
 )
 
 # ============================================================================
@@ -283,6 +284,10 @@ set(CORE_SOURCES
     src/core/threaded_pipeline.cpp
 )
 
+set(GUI_SOURCES
+    src/gui/gui_app.cpp
+)
+
 set(ALL_SOURCES
     ${UTIL_SOURCES}
     ${CAMERA_SOURCES}
@@ -296,6 +301,7 @@ set(ALL_SOURCES
     ${WARNING_SOURCES}
     ${VISUALIZATION_SOURCES}
     ${CORE_SOURCES}
+    ${GUI_SOURCES}
 )
 
 # ============================================================================
