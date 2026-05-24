@@ -396,8 +396,8 @@ bool YOLOv8Detector::loadEngine(const std::string& enginePath) {
         return false;
     }
 
-    LOG_INFO("Detector", "Engine loaded successfully. IO Tensors: " +
-             std::to_string(engine_->getNbIOTensors()));
+    LOG_INFO("Detector", "Engine loaded successfully. Bindings: " +
+             std::to_string(engine_->getNbBindings()));
     return true;
 }
 
@@ -466,7 +466,12 @@ bool YOLOv8Detector::saveEngine(const std::string& enginePath) {
 // Buffer Management (TensorRT)
 // ==============================================================================
 bool YOLOv8Detector::allocateBuffers() {
-    nvinfer1::Dims inputDims = engine_->getTensorShape(engine_->getIOTensorName(0));
+    inputIndex_ = engine_->getBindingIndex("images");
+    outputIndex_ = engine_->getBindingIndex("output0");
+    if (inputIndex_ < 0) inputIndex_ = 0;
+    if (outputIndex_ < 0) outputIndex_ = 1;
+
+    nvinfer1::Dims inputDims = engine_->getBindingDimensions(inputIndex_);
     batchSize_ = inputDims.d[0];
     int channels = inputDims.d[1];
     int inputH = inputDims.d[2];
@@ -475,7 +480,7 @@ bool YOLOv8Detector::allocateBuffers() {
     inputSize_ = batchSize_ * channels * inputH * inputW * sizeof(float);
     hostInput_.resize(batchSize_ * channels * inputH * inputW);
 
-    nvinfer1::Dims outputDims = engine_->getTensorShape(engine_->getIOTensorName(1));
+    nvinfer1::Dims outputDims = engine_->getBindingDimensions(outputIndex_);
     int outputDim1 = outputDims.d[1];
     int outputDim2 = outputDims.d[2];
 
@@ -486,16 +491,16 @@ bool YOLOv8Detector::allocateBuffers() {
     hostOutput_.resize(batchSize_ * outputDim1 * outputDim2);
 
     cudaError_t err;
-    err = cudaMalloc(&buffers_[0], inputSize_);
+    err = cudaMalloc(&buffers_[inputIndex_], inputSize_);
     if (err != cudaSuccess) {
         LOG_ERROR("Detector", "Failed to allocate input GPU buffer");
         return false;
     }
 
-    err = cudaMalloc(&buffers_[1], outputSize_);
+    err = cudaMalloc(&buffers_[outputIndex_], outputSize_);
     if (err != cudaSuccess) {
         LOG_ERROR("Detector", "Failed to allocate output GPU buffer");
-        cudaFree(buffers_[0]);
+        cudaFree(buffers_[inputIndex_]);
         return false;
     }
 
@@ -506,8 +511,8 @@ bool YOLOv8Detector::allocateBuffers() {
 }
 
 void YOLOv8Detector::freeBuffers() {
-    if (buffers_[0]) { cudaFree(buffers_[0]); buffers_[0] = nullptr; }
-    if (buffers_[1]) { cudaFree(buffers_[1]); buffers_[1] = nullptr; }
+    if (buffers_[inputIndex_]) { cudaFree(buffers_[inputIndex_]); buffers_[inputIndex_] = nullptr; }
+    if (buffers_[outputIndex_]) { cudaFree(buffers_[outputIndex_]); buffers_[outputIndex_] = nullptr; }
 }
 
 // ==============================================================================
@@ -517,9 +522,10 @@ bool YOLOv8Detector::executeInference(float* inputBuffer, float* outputBuffer) {
     (void)inputBuffer;
     (void)outputBuffer;
 
-    bool success = context_->enqueueV3(stream_);
+    void* bindings[] = {buffers_[inputIndex_], buffers_[outputIndex_]};
+    bool success = context_->enqueueV2(bindings, stream_, nullptr);
     if (!success) {
-        LOG_ERROR("Detector", "TensorRT enqueueV3 failed");
+        LOG_ERROR("Detector", "TensorRT enqueueV2 failed");
         return false;
     }
     return true;
