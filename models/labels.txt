@@ -1,12 +1,10 @@
-pedestrian
-rider
+person
+bike
 car
-truck
+motor
+rider
 bus
 train
-motorcycle
-bicycle
-traffic light
+truck
 traffic sign
-trailer
-other vehicle
+traffic light

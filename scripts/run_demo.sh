@@ -66,9 +66,9 @@ echo ""
 # Run
 cd "${PROJECT_DIR}"
 if [ "${HAS_GUI}" = true ]; then
-    ${BIN} --gui --video-dir "${VIDEO_DIR}" --kitti-root "${ROOT_DIR}/KITTI" "$@"
+    "${BIN}" --gui --video-dir "${VIDEO_DIR}" --kitti-root "${ROOT_DIR}/KITTI" "$@"
 elif [ "${HAS_INPUT}" = true ]; then
-    ${BIN} "$@"
+    "${BIN}" "$@"
 else
     # Use default video
     DEFAULT_VIDEO=$(ls "${VIDEO_DIR}"/2011_09_26_drive_0009_sync.avi \
@@ -76,7 +76,7 @@ else
                        "${VIDEO_DIR}"/2011_*.avi 2>/dev/null | head -1)
     if [ -n "${DEFAULT_VIDEO}" ]; then
         echo "[INFO] Using default video: ${DEFAULT_VIDEO}"
-        ${BIN} --video "${DEFAULT_VIDEO}" "$@"
+        "${BIN}" --video "${DEFAULT_VIDEO}" "$@"
     else
         echo "[ERROR] No video found. Specify --video or --camera"
         exit 1

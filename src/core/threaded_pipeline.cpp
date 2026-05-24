@@ -67,23 +67,7 @@ bool ThreadedPipeline::init(const ThreadedPipelineConfig& config) {
             return false;
         }
     } else if (cfg.inputType == "camera") {
-        bool cameraOk = false;
-        if (cfg.cameraType == "usb") {
-            int devId = 0;
-            if (!cfg.inputSource.empty()) {
-                try { devId = std::stoi(cfg.inputSource); } catch (...) {}
-            }
-            LOG_INFO("ThreadedPipeline", "Opening USB camera device " + std::to_string(devId));
-            cameraOk = camera_.openUSB(devId, cfg.inputWidth, cfg.inputHeight);
-        } else {
-            LOG_INFO("ThreadedPipeline", "Opening CSI camera sensor " + std::to_string(cfg.csiSensorId));
-            cameraOk = camera_.openCSI(cfg.csiSensorId,
-                                        cfg.csiCaptureWidth,
-                                        cfg.csiCaptureHeight,
-                                        cfg.csiFps,
-                                        cfg.csiFlipMethod);
-        }
-        if (!cameraOk) {
+        if (!camera_.openCSI()) {
             LOG_ERROR("ThreadedPipeline", "Failed to open camera");
             return false;
         }
@@ -305,7 +289,14 @@ void ThreadedPipeline::displayThread() {
             // Draw using snapshot data directly
             drawFromSnapshots(frame, snapshots, distances, speeds, ttcs, risks, fps);
 
-            cv::imshow("FCW System", frame);
+            // Display: native aspect for video, 1024x600 for camera
+            if (cfg.inputType == "camera") {
+                cv::Mat display;
+                cv::resize(frame, display, cv::Size(1024, 600));
+                cv::imshow("FCW System", display);
+            } else {
+                cv::imshow("FCW System", frame);
+            }
         }
 
         // Save video
@@ -374,22 +365,38 @@ void ThreadedPipeline::drawFromSnapshots(
         auto riskIt = risks.find(id);
         if (riskIt != risks.end()) riskLevel = riskIt->second.level;
 
+        // Color by class type
+        int classId = snap.classId;
         cv::Scalar color;
-        switch (riskLevel) {
-            case RiskLevel::SAFE:     color = cv::Scalar(0, 255, 0); break;
-            case RiskLevel::CAUTION:  color = cv::Scalar(0, 255, 255); break;
-            case RiskLevel::DANGER:   color = cv::Scalar(0, 165, 255); break;
-            case RiskLevel::CRITICAL: color = cv::Scalar(0, 0, 255); break;
+        if (classId == 0 || classId == 4) {
+            color = cv::Scalar(0, 0, 255);  // person, rider → red
+        } else if (classId == 8 || classId == 9) {
+            color = cv::Scalar(0, 255, 255);  // traffic sign/light → yellow
+        } else {
+            color = cv::Scalar(0, 255, 0);  // vehicles → green
+        }
+
+        // Override with risk color if danger/critical
+        if (riskLevel >= RiskLevel::DANGER) {
+            switch (riskLevel) {
+                case RiskLevel::DANGER:   color = cv::Scalar(0, 165, 255); break;
+                case RiskLevel::CRITICAL: color = cv::Scalar(0, 0, 255); break;
+                default: break;
+            }
         }
 
         cv::Rect rect = snap.bbox.toRect();
-        int thickness = (riskLevel >= RiskLevel::DANGER) ? 3 : 2;
+        int thickness = 1;
         cv::rectangle(frame, rect, color, thickness);
 
-        // ID label
-        std::string idText = "ID:" + std::to_string(id);
-        cv::putText(frame, idText, cv::Point(rect.x, rect.y - 5),
-                    cv::FONT_HERSHEY_SIMPLEX, 0.5, color, 1);
+        // Class name label
+        static const char* classNames[] = {
+            "person", "bike", "car", "motor", "rider",
+            "bus", "train", "truck", "traffic sign", "traffic light"
+        };
+        const char* className = (classId >= 0 && classId < 10) ? classNames[classId] : "unknown";
+        cv::putText(frame, className, cv::Point(rect.x, rect.y - 3),
+                    cv::FONT_HERSHEY_SIMPLEX, 0.4, color, 1);
 
         // Info labels
         int x = rect.x + rect.width + 5;

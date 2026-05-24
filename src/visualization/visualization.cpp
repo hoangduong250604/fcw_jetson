@@ -24,7 +24,8 @@ void Visualization::draw(cv::Mat& frame,
                           const std::unordered_map<int, RiskAssessment>& risks,
                           double fps,
                           const DetectionResult& detections,
-                          float egoSpeedKmh) {
+                          float egoSpeedKmh,
+                          const TrafficSignResult& trafficResult) {
     if (frame.empty()) return;
 
     // Find highest risk for overall overlay
@@ -94,7 +95,12 @@ void Visualization::draw(cv::Mat& frame,
 
     // Draw traffic light panel
     if (!detections.empty()) {
-        drawTrafficLightPanel(frame, detections);
+        drawTrafficLightPanel(frame, detections, trafficResult);
+    }
+
+    // Draw traffic sign panel
+    if (trafficResult.valid && !trafficResult.signs.empty()) {
+        drawTrafficSignPanel(frame, trafficResult);
     }
 
     // Draw ego speed panel
@@ -105,18 +111,43 @@ void Visualization::drawBoundingBox(cv::Mat& frame, const Track* track,
                                      const RiskAssessment& risk) const {
     utils::BBox bbox = track->getBBox();
     cv::Rect rect = bbox.toRect();
-    cv::Scalar color = getRiskColor(risk.level);
-    int thickness = (risk.level >= RiskLevel::DANGER) ? 3 : 2;
 
+    // Color by class type:
+    // Vehicles (car, truck, bus, bike, motor, train) = Green
+    // Traffic light = Yellow, Traffic sign = Yellow
+    // Person, Rider = Red
+    int classId = track->getClassId();
+    cv::Scalar color;
+    if (classId == 0 || classId == 4) {
+        // person (0), rider (4) → red
+        color = cv::Scalar(0, 0, 255);
+    } else if (classId == 8 || classId == 9) {
+        // traffic sign (8), traffic light (9) → yellow
+        color = cv::Scalar(0, 255, 255);
+    } else {
+        // vehicles (bike=1, car=2, motor=3, rider=4, bus=5, train=6, truck=7) → green
+        color = cv::Scalar(0, 255, 0);
+    }
+
+    // Override with risk color if danger/critical
+    if (risk.level >= RiskLevel::DANGER) {
+        color = getRiskColor(risk.level);
+    }
+
+    int thickness = 1;
     cv::rectangle(frame, rect, color, thickness);
 
-    // Draw track ID
-    if (config_.showTrackId) {
-        std::string idText = "ID:" + std::to_string(track->getId());
-        cv::putText(frame, idText,
-                    cv::Point(rect.x, rect.y - 5),
-                    cv::FONT_HERSHEY_SIMPLEX, 0.5, color, 1);
-    }
+    // Draw class name label
+    std::string className = track->getLastDetection().className;
+    if (className.empty()) className = "id:" + std::to_string(track->getId());
+
+    int baseline = 0;
+    cv::Size textSize = cv::getTextSize(className, cv::FONT_HERSHEY_SIMPLEX, 0.4, 1, &baseline);
+    cv::Point textOrg(rect.x, rect.y - 3);
+    if (textOrg.y - textSize.height < 0) textOrg.y = rect.y + textSize.height + 3;
+
+    cv::putText(frame, className, textOrg,
+                cv::FONT_HERSHEY_SIMPLEX, 0.4, color, 1);
 }
 
 void Visualization::drawInfoLabel(cv::Mat& frame, const Track* track,
@@ -506,7 +537,8 @@ TrafficLightState Visualization::analyzeTrafficLightColor(const cv::Mat& frame,
 // Traffic Light Panel - right side display
 // ==============================================================================
 void Visualization::drawTrafficLightPanel(cv::Mat& frame,
-                                           const DetectionResult& detections) const {
+                                           const DetectionResult& detections,
+                                           const TrafficSignResult& trafficResult) const {
     auto lights = detections.getTrafficLights();
     if (lights.empty()) return;
 
@@ -516,7 +548,16 @@ void Visualization::drawTrafficLightPanel(cv::Mat& frame,
         if (light->confidence > bestLight->confidence) bestLight = light;
     }
 
-    TrafficLightState state = analyzeTrafficLightColor(frame, *bestLight);
+    // Use AI classification if available, fall back to HSV analysis
+    TrafficLightState state;
+    std::string method;
+    if (trafficResult.valid && trafficResult.lightState != TrafficLightState::UNKNOWN) {
+        state = trafficResult.lightState;
+        method = "AI";
+    } else {
+        state = analyzeTrafficLightColor(frame, *bestLight);
+        method = "HSV";
+    }
 
     // Draw panel on the right side (below dashboard area)
     int panelW = 160, panelH = 110;
@@ -535,9 +576,9 @@ void Visualization::drawTrafficLightPanel(cv::Mat& frame,
     // Border
     cv::rectangle(frame, panelRect, cv::Scalar(200, 200, 200), 1);
 
-    // Title
-    cv::putText(frame, "TRAFFIC LIGHT", cv::Point(x + 10, y + 20),
-                cv::FONT_HERSHEY_SIMPLEX, 0.45, cv::Scalar(200, 200, 200), 1);
+    // Title with method indicator
+    cv::putText(frame, "TRAFFIC LIGHT [" + method + "]", cv::Point(x + 5, y + 20),
+                cv::FONT_HERSHEY_SIMPLEX, 0.38, cv::Scalar(200, 200, 200), 1);
 
     // Draw traffic light icon (3 circles)
     int iconX = x + 35;
@@ -589,6 +630,74 @@ void Visualization::drawTrafficLightPanel(cv::Mat& frame,
     cv::rectangle(frame, tlRect, cv::Scalar(0, 255, 255), 2);
     cv::putText(frame, "TL", cv::Point(tlRect.x, tlRect.y - 5),
                 cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 255), 1);
+}
+
+// ==============================================================================
+// Traffic Sign Panel - display detected traffic signs
+// ==============================================================================
+void Visualization::drawTrafficSignPanel(cv::Mat& frame,
+                                          const TrafficSignResult& trafficResult) const {
+    if (trafficResult.signs.empty()) return;
+
+    int panelW = 180;
+    int lineH = 22;
+    int panelH = 30 + static_cast<int>(trafficResult.signs.size()) * lineH;
+    panelH = std::min(panelH, 150);  // Cap height
+
+    int x = frame.cols - panelW - 10;
+    int y = 130;  // Below traffic light panel
+
+    cv::Rect panelRect(x, y, panelW, panelH);
+    panelRect &= cv::Rect(0, 0, frame.cols, frame.rows);
+    if (panelRect.width <= 0 || panelRect.height <= 0) return;
+
+    // Semi-transparent background
+    cv::Mat roi = frame(panelRect);
+    cv::Mat bgOverlay(panelRect.size(), frame.type(), cv::Scalar(30, 30, 30));
+    cv::addWeighted(bgOverlay, 0.7, roi, 0.3, 0, roi);
+    cv::rectangle(frame, panelRect, cv::Scalar(200, 200, 200), 1);
+
+    // Title
+    cv::putText(frame, "TRAFFIC SIGNS", cv::Point(x + 10, y + 18),
+                cv::FONT_HERSHEY_SIMPLEX, 0.42, cv::Scalar(200, 200, 200), 1);
+
+    // List detected signs
+    int yOff = y + 35;
+    int maxSigns = (panelH - 35) / lineH;
+    int count = 0;
+    for (const auto& sign : trafficResult.signs) {
+        if (count >= maxSigns) break;
+
+        // Sign icon color based on type
+        cv::Scalar signColor(0, 200, 255);  // Default: orange
+        if (sign.name.find("Stop") != std::string::npos)
+            signColor = cv::Scalar(0, 0, 255);
+        else if (sign.name.find("Speed") != std::string::npos)
+            signColor = cv::Scalar(255, 100, 100);
+        else if (sign.name.find("Yield") != std::string::npos)
+            signColor = cv::Scalar(0, 200, 255);
+
+        // Draw small icon dot
+        cv::circle(frame, cv::Point(x + 12, yOff - 4), 4, signColor, -1);
+
+        // Sign name + confidence
+        std::ostringstream ss;
+        ss << sign.name << " " << std::fixed << std::setprecision(0)
+           << (sign.confidence * 100) << "%";
+        cv::putText(frame, ss.str(), cv::Point(x + 22, yOff),
+                    cv::FONT_HERSHEY_SIMPLEX, 0.35, cv::Scalar(220, 220, 220), 1);
+
+        // Draw bbox on frame for the sign
+        if (sign.bbox.width > 0) {
+            cv::rectangle(frame, sign.bbox, signColor, 2);
+            cv::putText(frame, sign.name,
+                        cv::Point(sign.bbox.x, sign.bbox.y - 5),
+                        cv::FONT_HERSHEY_SIMPLEX, 0.4, signColor, 1);
+        }
+
+        yOff += lineH;
+        count++;
+    }
 }
 
 // ==============================================================================

@@ -41,12 +41,12 @@ namespace fcw {
 struct DetectorConfig {
     std::string modelPath;          // Path to .engine or .onnx file
     std::string labelsPath;         // Path to labels.txt
-    int inputWidth = 640;           // Model input width
-    int inputHeight = 640;          // Model input height
+    int inputWidth = 960;           // Model input width
+    int inputHeight = 544;          // Model input height
     float confThreshold = 0.45f;    // Confidence threshold
     float nmsThreshold = 0.50f;     // NMS IoU threshold
     int maxDetections = 100;        // Max detections per frame
-    std::vector<int> targetClasses = {0, 1, 2, 3, 5, 6, 7, 9};  // COCO: person, bicycle, car, motorcycle, bus, train, truck, traffic light
+    std::vector<int> targetClasses = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};  // BDD100K 10-class model
     bool useFP16 = true;            // Half precision
 };
 

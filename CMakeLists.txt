@@ -189,12 +189,17 @@ else()
 endif()
 endif()  # USE_TENSORRT
 
-# yaml-cpp for config parsing (optional for now, needed for reading YAML configs)
+# yaml-cpp for config parsing
 find_package(yaml-cpp QUIET)
 if(yaml-cpp_FOUND)
     message(STATUS "yaml-cpp found: ${YAML_CPP_INCLUDE_DIR}")
 else()
-    message(STATUS "yaml-cpp not found - YAML config parsing will be unavailable. Install via: vcpkg install yaml-cpp:x64-windows")
+    message(STATUS "yaml-cpp not found locally - using third_party/yaml-cpp")
+    set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+    set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "" FORCE)
+    add_subdirectory(third_party/yaml-cpp)
+    set(yaml-cpp_FOUND TRUE)
 endif()
 
 # Threads

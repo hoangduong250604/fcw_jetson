@@ -54,6 +54,7 @@ struct DistanceInfo {
     float longitudinalDist = 0.0f;    // Z-axis depth (meters, straight ahead)
     bool inEgoPath = false;           // true = vehicle is in ego lane corridor
     
+    bool isEdgeTruncated = false;     // true = bbox clipped at screen edge (unreliable distance)
     bool valid = false;               // Whether estimate is reliable
     cv::Rect bbox;                    // Bounding box for this detection
 };

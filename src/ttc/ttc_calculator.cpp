@@ -68,6 +68,7 @@ std::unordered_map<int, TTCInfo> TTCCalculator::calculate(
         info.distance = dist.smoothedDistance;
         info.relativeSpeed = speed.closingSpeedMs;  // Closing speed in m/s
         info.isApproaching = speed.isApproaching;
+        info.vehicleState = speed.vehicleState;     // Propagate vehicle state
 
         // ---- Method 1: Distance-based TTC ----
         info.ttcDistance = computeTTCFromDistance(info.distance, info.relativeSpeed);

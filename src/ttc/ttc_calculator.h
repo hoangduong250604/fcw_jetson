@@ -31,6 +31,8 @@
 #include "speed_estimator.h"
 #include "track.h"
 
+// Forward reference to VehicleState (defined in speed_estimator.h)
+
 namespace fcw {
 
 struct TTCConfig {
@@ -56,6 +58,7 @@ struct TTCInfo {
 
     bool isApproaching = false;          // Vehicle is getting closer
     bool valid = false;                  // TTC computation is valid
+    VehicleState vehicleState = VehicleState::UNKNOWN;  // Target vehicle state
 };
 
 class TTCCalculator {

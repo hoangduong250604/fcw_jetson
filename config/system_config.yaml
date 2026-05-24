@@ -37,6 +37,8 @@ system:
   performance:
     # Target FPS (0 = unlimited)
     target_fps: 15
+    # Detection skip: run detection every N frames (1=every frame, 2=every other, 3=every 3rd)
+    detect_interval: 2
     # Use GPU acceleration
     use_gpu: true
     # GPU device ID
@@ -44,22 +46,33 @@ system:
 
 # Detection model configuration
 detection:
-  model_path: "../yolov8n.engine"
-  labels_path: "../labels.txt"
+  model_path: "./models/yolov8s_bdd100k.engine"
+  labels_path: "./models/labels.txt"
   # Input size for YOLO
-  input_width: 640
-  input_height: 640
+  input_width: 960
+  input_height: 544
   # Confidence threshold
   conf_threshold: 0.45
   # NMS IoU threshold
   nms_threshold: 0.50
   # Maximum detections
   max_detections: 100
-  # Classes to detect (BDD100K 12-class indices)
-  # 0=pedestrian, 1=rider, 2=car, 3=truck, 4=bus, 6=motorcycle, 10=trailer, 11=other vehicle
-  target_classes: [0, 1, 2, 3, 4, 6, 10, 11]
+  # Classes to detect (BDD100K 10-class model)
+  # 0=person, 1=bike, 2=car, 3=motor, 4=rider, 5=bus, 6=train, 7=truck
+  # 8=traffic sign, 9=traffic light
+  target_classes: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
   # Half precision (FP16) on Jetson
   use_fp16: true
+
+# Traffic sign/light processor
+# Uses HSV analysis on traffic light crops from main detector
+traffic_sign:
+  enabled: false
+  model_path: ""
+  labels_path: "./models/traffic_labels.txt"
+  input_size: 320
+  conf_threshold: 0.40
+  process_interval: 3    # Run every N frames (cache between)
 
 # Tracking configuration
 tracking:

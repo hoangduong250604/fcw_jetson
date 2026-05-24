@@ -36,9 +36,15 @@ std::unordered_map<int, DistanceInfo> DistanceEstimator::estimate(
                            (bbox.height() > imageHeight_ * 0.25f);
 
         if (isTruncated) {
-            // Vehicle is clipped at screen edge → override with proximity estimate
-            float ratio = std::min(1.0f, bbox.height() / static_cast<float>(imageHeight_));
-            info.rawDistance = std::max(1.0f, 4.5f - (ratio * 3.0f));
+            // Vehicle is clipped at screen edge → mark as unreliable
+            info.isEdgeTruncated = true;
+            // Still compute distance normally but flag it
+            info.rawDistance = computeDistance(bbox);
+            // If distance seems unrealistically small due to truncation, use fallback
+            if (info.rawDistance < 3.0f) {
+                float ratio = std::min(1.0f, bbox.height() / static_cast<float>(imageHeight_));
+                info.rawDistance = std::max(3.0f, 6.0f - (ratio * 4.0f));
+            }
         } else {
             info.rawDistance = computeDistance(bbox);
         }

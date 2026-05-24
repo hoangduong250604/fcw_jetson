@@ -71,8 +71,8 @@ struct DetectionResult {
         float minDist = std::numeric_limits<float>::max();
 
         for (const auto& det : detections) {
-            // Skip non-vehicle classes (e.g. traffic light = COCO 9)
-            if (det.classId == 9) continue;
+            // Skip non-vehicle classes (BDD100K: traffic sign=8, traffic light=9)
+            if (det.classId == 8 || det.classId == 9) continue;
             float dist = std::abs(det.getCenterX() - imageCenterX);
             // Prefer vehicles that are closest (bottom of bbox is lower)
             // and near the center of the lane
@@ -85,7 +85,7 @@ struct DetectionResult {
         return lead;
     }
 
-    /** Get all traffic light detections (COCO class 9) */
+    /** Get all traffic light detections (BDD100K class 9) */
     std::vector<const Detection*> getTrafficLights() const {
         std::vector<const Detection*> lights;
         for (const auto& det : detections) {

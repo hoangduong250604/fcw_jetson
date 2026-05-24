@@ -68,6 +68,11 @@ bool Pipeline::loadConfig(const std::string& systemConfigPath,
         config_.enableWarning = pipeline["enable_warning"].as<bool>(true);
         config_.enableVisualization = pipeline["enable_visualization"].as<bool>(true);
 
+        // Performance config
+        if (sys["performance"]) {
+            detectInterval_ = sys["performance"]["detect_interval"].as<int>(2);
+        }
+
         // Detection config
         auto det = sysConfig["detection"];
         config_.detectorConfig.modelPath = det["model_path"].as<std::string>("./models/yolov8n.engine");
@@ -139,6 +144,17 @@ bool Pipeline::loadConfig(const std::string& systemConfigPath,
             config_.warningConfig.audioEnabled = warn["audio"]["enabled"].as<bool>(true);
         }
 
+        // Traffic sign/light secondary detector config
+        if (sysConfig["traffic_sign"]) {
+            auto ts = sysConfig["traffic_sign"];
+            config_.trafficSignConfig.enabled = ts["enabled"].as<bool>(true);
+            config_.trafficSignConfig.modelPath = ts["model_path"].as<std::string>("./models/yolov8n_traffic.onnx");
+            config_.trafficSignConfig.labelsPath = ts["labels_path"].as<std::string>("./models/traffic_labels.txt");
+            config_.trafficSignConfig.inputSize = ts["input_size"].as<int>(320);
+            config_.trafficSignConfig.confThreshold = ts["conf_threshold"].as<float>(0.40f);
+            config_.trafficSignConfig.processInterval = ts["process_interval"].as<int>(3);
+        }
+
         LOG_INFO("Pipeline", "Configuration loaded successfully");
         return true;
 
@@ -152,27 +168,6 @@ bool Pipeline::loadConfig(const std::string& systemConfigPath,
     LOG_WARNING("Pipeline", "Ignoring config files: " + systemConfigPath);
     return true;  // Continue with default config
 #endif
-}
-
-// ==============================================================================
-// Override methods (for GUI)
-// ==============================================================================
-void Pipeline::overrideInput(const std::string& type, const std::string& source) {
-    config_.inputType = type;
-    config_.inputSource = source;
-}
-
-void Pipeline::overrideCameraType(const std::string& camType) {
-    config_.cameraType = camType;
-}
-
-void Pipeline::overrideKittiRoot(const std::string& root) {
-    config_.kittiRoot = root;
-}
-
-void Pipeline::overrideModel(const std::string& modelPath, const std::string& labelsPath) {
-    config_.detectorConfig.modelPath = modelPath;
-    config_.detectorConfig.labelsPath = labelsPath;
 }
 
 // ==============================================================================
@@ -286,6 +281,9 @@ bool Pipeline::init(const PipelineConfig& config) {
     if (config_.enableVisualization) {
         visualization_.setConfig(config_.visConfig);
     }
+
+    // ---- Initialize traffic sign/light processor ----
+    trafficSignProcessor_.init(config_.trafficSignConfig);
 
     // ---- Video writer ----
     if (config_.saveVideo) {
@@ -410,13 +408,28 @@ bool Pipeline::processFrame() {
         warningSystem_.trigger(highest);
     }
 
+    // ---- 8b. Traffic Sign/Light Classification ----
+    TrafficSignResult trafficResult;
+    if (trafficSignProcessor_.isReady()) {
+        trafficResult = trafficSignProcessor_.process(frame, detections, frameCount_);
+    }
+
     // ---- 9. Visualization ----
     if (config_.enableVisualization) {
         utils::ScopedTimer st(timer_, "visualization");
         float egoSpeedKmh = speedEstimator_.getEgoSpeedKmh();
         visualization_.draw(frame, activeTracks, distances, speeds,
-                            ttcs, risks, timer_.getFPS(), detections, egoSpeedKmh);
-        cv::imshow("FCW System", frame);
+                            ttcs, risks, timer_.getFPS(), detections, egoSpeedKmh,
+                            trafficResult);
+
+        // Display: native aspect for video, 1024x600 for camera
+        if (config_.inputType == "camera") {
+            cv::Mat display;
+            cv::resize(frame, display, cv::Size(1024, 600));
+            cv::imshow("FCW System", display);
+        } else {
+            cv::imshow("FCW System", frame);
+        }
     }
 
     // ---- 10. Save output ----
