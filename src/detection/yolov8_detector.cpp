@@ -653,6 +653,10 @@ bool YOLOv8Detector::loadLabels(const std::string& labelsPath) {
     labels_.clear();
     std::string line;
     while (std::getline(file, line)) {
+        // Strip \r from Windows CRLF line endings
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
         if (!line.empty()) {
             labels_.push_back(line);
         }
