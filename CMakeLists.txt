@@ -223,6 +223,7 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/src/visualization
     ${CMAKE_SOURCE_DIR}/src/utils
     ${CMAKE_SOURCE_DIR}/src/gui
+    ${CMAKE_SOURCE_DIR}/src/traffic
 )
 
 # ============================================================================
@@ -284,6 +285,10 @@ set(VISUALIZATION_SOURCES
     src/visualization/visualization.cpp
 )
 
+set(TRAFFIC_SOURCES
+    src/traffic/traffic_sign_processor.cpp
+)
+
 set(CORE_SOURCES
     src/core/pipeline.cpp
     src/core/threaded_pipeline.cpp
@@ -305,6 +310,7 @@ set(ALL_SOURCES
     ${RISK_SOURCES}
     ${WARNING_SOURCES}
     ${VISUALIZATION_SOURCES}
+    ${TRAFFIC_SOURCES}
     ${CORE_SOURCES}
     ${GUI_SOURCES}
 )

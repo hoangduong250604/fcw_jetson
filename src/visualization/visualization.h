@@ -13,6 +13,7 @@
 #include "ttc_calculator.h"
 #include "risk_state.h"
 #include "bev_distance.h"
+#include "traffic_sign_processor.h"
 
 namespace fcw {
 
@@ -56,7 +57,8 @@ public:
               const std::unordered_map<int, RiskAssessment>& risks,
               double fps,
               const DetectionResult& detections = DetectionResult(),
-              float egoSpeedKmh = 0.0f);
+              float egoSpeedKmh = 0.0f,
+              const TrafficSignResult& trafficResult = TrafficSignResult());
 
     /** Set config */
     void setConfig(const VisConfig& config);
@@ -78,7 +80,9 @@ private:
     void drawDashboard(cv::Mat& frame, const RiskAssessment& highestRisk) const;
     void drawDetectionZone(cv::Mat& frame, const RiskAssessment& risk) const;
     void drawDetectionZoneStatic(cv::Mat& frame) const;
-    void drawTrafficLightPanel(cv::Mat& frame, const DetectionResult& detections) const;
+    void drawTrafficLightPanel(cv::Mat& frame, const DetectionResult& detections,
+                                const TrafficSignResult& trafficResult) const;
+    void drawTrafficSignPanel(cv::Mat& frame, const TrafficSignResult& trafficResult) const;
     void drawEgoSpeedPanel(cv::Mat& frame, float egoSpeedKmh) const;
     TrafficLightState analyzeTrafficLightColor(const cv::Mat& frame, const Detection& det) const;
 
