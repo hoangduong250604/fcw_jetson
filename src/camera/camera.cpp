@@ -79,10 +79,16 @@ bool Camera::read(cv::Mat& frame) {
     if (!isOpened_) return false;
 
     if (isLiveCamera_) {
-        // Drain buffer: grab all pending frames, keep only the latest
-        // This prevents 2-3 second delay when processing is slower than camera FPS
-        cap_.grab();
-        cap_.grab();
+        // Drain buffer: grab until buffer is empty, keep only the latest frame
+        // A fast grab (<5ms) means it came from buffer; slow grab means fresh frame
+        cap_.grab();  // Always grab at least one
+        for (int i = 0; i < 10; i++) {
+            auto t1 = std::chrono::steady_clock::now();
+            cap_.grab();
+            auto t2 = std::chrono::steady_clock::now();
+            double ms = std::chrono::duration<double, std::milli>(t2 - t1).count();
+            if (ms > 5.0) break;  // This was a fresh frame, stop draining
+        }
         return cap_.retrieve(frame);
     }
 
