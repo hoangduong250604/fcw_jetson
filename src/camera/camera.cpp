@@ -42,6 +42,8 @@ bool Camera::openCSI(int sensorId, int captureWidth,
         return false;
     }
     isOpened_ = true;
+    isLiveCamera_ = true;
+    cap_.set(cv::CAP_PROP_BUFFERSIZE, 1);
     config_.captureWidth = captureWidth;
     config_.captureHeight = captureHeight;
     config_.fps = fps;
@@ -63,6 +65,8 @@ bool Camera::openUSB(int deviceId, int width, int height) {
     cap_.set(cv::CAP_PROP_FRAME_WIDTH, width);
     cap_.set(cv::CAP_PROP_FRAME_HEIGHT, height);
     isOpened_ = true;
+    isLiveCamera_ = true;
+    cap_.set(cv::CAP_PROP_BUFFERSIZE, 1);
 
     config_.imageWidth = static_cast<int>(cap_.get(cv::CAP_PROP_FRAME_WIDTH));
     config_.imageHeight = static_cast<int>(cap_.get(cv::CAP_PROP_FRAME_HEIGHT));
@@ -73,6 +77,15 @@ bool Camera::openUSB(int deviceId, int width, int height) {
 
 bool Camera::read(cv::Mat& frame) {
     if (!isOpened_) return false;
+
+    if (isLiveCamera_) {
+        // Drain buffer: grab all pending frames, keep only the latest
+        // This prevents 2-3 second delay when processing is slower than camera FPS
+        cap_.grab();
+        cap_.grab();
+        return cap_.retrieve(frame);
+    }
+
     return cap_.read(frame);
 }
 

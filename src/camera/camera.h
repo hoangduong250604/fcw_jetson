@@ -98,6 +98,7 @@ private:
     cv::VideoCapture cap_;
     CameraConfig config_;
     bool isOpened_ = false;
+    bool isLiveCamera_ = false;  // true for CSI/USB, false for video file
 };
 
 } // namespace fcw
