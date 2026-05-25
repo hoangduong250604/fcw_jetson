@@ -43,7 +43,6 @@ bool Camera::openCSI(int sensorId, int captureWidth,
     }
     isOpened_ = true;
     isLiveCamera_ = true;
-    cap_.set(cv::CAP_PROP_BUFFERSIZE, 1);
     config_.captureWidth = captureWidth;
     config_.captureHeight = captureHeight;
     config_.fps = fps;
@@ -162,7 +161,7 @@ std::string Camera::buildGStreamerPipeline(int sensorId, int captureWidth,
        << ", height=(int)" << captureHeight
        << ", format=(string)BGRx ! "
        << "videoconvert ! "
-       << "video/x-raw, format=(string)BGR ! appsink";
+       << "video/x-raw, format=(string)BGR ! appsink drop=true max-buffers=1";
     return ss.str();
 }
 
