@@ -41,8 +41,8 @@ namespace fcw {
 struct DetectorConfig {
     std::string modelPath;          // Path to .engine or .onnx file
     std::string labelsPath;         // Path to labels.txt
-    int inputWidth = 960;           // Model input width
-    int inputHeight = 544;          // Model input height
+    int inputWidth = 768;           // Model input width
+    int inputHeight = 448;          // Model input height
     float confThreshold = 0.45f;    // Confidence threshold
     float nmsThreshold = 0.50f;     // NMS IoU threshold
     int maxDetections = 100;        // Max detections per frame
