@@ -49,6 +49,7 @@ void printUsage(const char* progName) {
     std::cout << "\n";
     std::cout << "Options:\n";
     std::cout << "  --config, -c       Path to system_config.yaml\n";
+    std::cout << "  --model, -m        Path to model (.engine or .onnx)\n";
     std::cout << "  --camera-config    Path to camera_config.yaml\n";
     std::cout << "  --warning-config   Path to warning_config.yaml\n";
     std::cout << "  --video, -v        Direct path to input video\n";
@@ -81,6 +82,7 @@ int main(int argc, char* argv[]) {
     std::string cameraConfigPath;
     std::string warningConfigPath;
     std::string videoPath;
+    std::string modelPath;
     int cameraId = -1;
     bool useThreaded = false;
     bool useUSB = false;
@@ -93,7 +95,8 @@ int main(int argc, char* argv[]) {
         std::string arg = argv[i];
         if ((arg == "--config" || arg == "-c") && i + 1 < argc) {
             configPath = argv[++i];
-        } else if (arg == "--camera-config" && i + 1 < argc) {
+        } else if ((arg == "--model" || arg == "-m") && i + 1 < argc) {
+            modelPath = argv[++i];
             cameraConfigPath = argv[++i];
         } else if (arg == "--warning-config" && i + 1 < argc) {
             warningConfigPath = argv[++i];
@@ -157,7 +160,7 @@ int main(int argc, char* argv[]) {
         fcw::PipelineConfig config;
         config.inputType = "video";
         config.inputSource = videoPath;
-        config.detectorConfig.modelPath = findModelPath();
+        config.detectorConfig.modelPath = modelPath.empty() ? findModelPath() : modelPath;
         config.detectorConfig.labelsPath = "./models/labels.txt";
         config.oxtsDataFolder = oxtsFolder;
         config.kittiRoot = kittiRoot;
@@ -187,7 +190,7 @@ int main(int argc, char* argv[]) {
         config.inputType = "camera";
         config.inputSource = std::to_string(cameraId);
         config.cameraType = useUSB ? "usb" : "csi";
-        config.detectorConfig.modelPath = findModelPath();
+        config.detectorConfig.modelPath = modelPath.empty() ? findModelPath() : modelPath;
         config.detectorConfig.labelsPath = "./models/labels.txt";
         LOG_INFO("Main", "Camera mode - model: " + config.detectorConfig.modelPath);
 
