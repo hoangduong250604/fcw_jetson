@@ -49,8 +49,8 @@ detection:
   model_path: "./models/yolov8s_bdd100k.engine"
   labels_path: "./models/labels.txt"
   # Input size for YOLO
-  input_width: 960
-  input_height: 544
+  input_width: 768
+  input_height: 448
   # Confidence threshold
   conf_threshold: 0.45
   # NMS IoU threshold
