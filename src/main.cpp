@@ -97,6 +97,7 @@ int main(int argc, char* argv[]) {
             configPath = argv[++i];
         } else if ((arg == "--model" || arg == "-m") && i + 1 < argc) {
             modelPath = argv[++i];
+        } else if (arg == "--camera-config" && i + 1 < argc) {
             cameraConfigPath = argv[++i];
         } else if (arg == "--warning-config" && i + 1 < argc) {
             warningConfigPath = argv[++i];
