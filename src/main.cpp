@@ -134,8 +134,10 @@ int main(int argc, char* argv[]) {
         LOG_INFO("Main", "Launching GUI...");
         fcw::gui::GuiApp gui;
         if (!videoDir.empty()) gui.setVideoDir(videoDir);
+        else gui.setVideoDir("../video_data");
         if (!kittiRoot.empty()) gui.setKittiRoot(kittiRoot);
         else gui.setKittiRoot("../KITTI");
+        if (!modelPath.empty()) gui.setModelPath(modelPath);
         gui.setConfigDir("./config");
         return gui.run();
     }

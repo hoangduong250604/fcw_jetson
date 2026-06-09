@@ -353,17 +353,24 @@ std::string GuiApp::showVideoSelect() {
 void GuiApp::launchPipeline(const std::string& inputType, const std::string& source) {
     cv::destroyWindow(windowName_);
 
-    // Find best model
-    std::string modelPath;
-    const char* candidates[] = {
-        "./models/yolov8s.engine", "./models/yolov8n.engine",
-        "./models/yolov8s.onnx",  "./models/yolov8n.onnx"
-    };
-    for (auto& p : candidates) {
-        std::ifstream f(p);
-        if (f.good()) { modelPath = p; break; }
+    // Find best model (prefer explicit CLI path, then bdd100k engine)
+    std::string modelPath = modelPath_;  // From CLI --model
+    if (modelPath.empty()) {
+        const char* candidates[] = {
+            "./models/yolov8s_bdd100k.engine",
+            "./models/yolov8s.engine",
+            "./models/yolov8n.engine",
+            "./models/yolov8s_bdd100k.onnx",
+            "./models/yolov8s.onnx",
+            "./models/yolov8n.onnx"
+        };
+        for (auto& p : candidates) {
+            std::ifstream f(p);
+            if (f.good()) { modelPath = p; break; }
+        }
     }
     if (modelPath.empty()) modelPath = "./models/yolov8s.onnx";
+    LOG_INFO("GUI", "Using model: " + modelPath);
 
     fcw::Pipeline pipeline;
 
