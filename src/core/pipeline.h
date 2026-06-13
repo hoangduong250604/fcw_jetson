@@ -12,6 +12,7 @@
 
 #include <string>
 #include <memory>
+#include <fstream>
 #include <opencv2/core.hpp>
 #include <opencv2/videoio.hpp>
 
@@ -49,6 +50,7 @@ struct PipelineConfig {
     // KITTI OXTS ground truth (for ego speed)
     std::string kittiRoot;               // Path to KITTI/ folder (auto-detect OXTS)
     std::string oxtsDataFolder;          // Direct path to oxts/data/ folder (override)
+    float fixedEgoSpeedKmh = -1.0f;      // Fixed ego speed (km/h), -1 = use OXTS/auto
 
     // Modules enable/disable
     bool enableDetection = true;
@@ -162,6 +164,13 @@ private:
 
     // Video writer for output
     cv::VideoWriter videoWriter_;
+
+    // Eval CSV export
+    std::ofstream evalLog_;
+    bool evalEnabled_ = false;
+
+public:
+    void enableEvalLog(const std::string& csvPath);
 };
 
 } // namespace fcw

@@ -1,0 +1,64 @@
+================================================================================
+  FCW SYSTEM EVALUATION REPORT - 2011_09_26_drive_0017
+================================================================================
+
+1. DETECTION SUMMARY
+----------------------------------------
+  GT object-frames (annotated):  6
+  Relevant system detections:    6
+  (within GT distance zone, vehicle classes only)
+  Successfully matched:          6
+  Recall:                        100.0%
+  Precision:                     100.0%
+
+  NOTE: Precision is computed only against detections within the
+  spatial zone where GT is annotated. KITTI tracklets do NOT label
+  all visible objects, so detections outside GT zone are excluded.
+
+2. DETECTION PER CLASS
+----------------------------------------
+  Class           GT Count   Matched    Recall    
+  Car             6          6          100.0%
+
+3. DISTANCE ESTIMATION ACCURACY
+----------------------------------------
+  Samples:                    6
+  MAE (Mean Abs Error):       0.85 m
+  RMSE:                       0.85 m
+  Mean Error:                 -0.85 m (bias)
+  Std Dev:                    0.11 m
+  Mean % Error:               6.3%
+  Median % Error:             6.3%
+
+  By distance range:
+      5-15 m: MAE=0.85m, Mean%Err=6.3%, N=6
+
+4. CLOSING SPEED ESTIMATION
+----------------------------------------
+  Samples:                    6
+  MAE:                        0.90 m/s
+  RMSE:                       0.92 m/s
+  Mean Bias:                  -0.90 m/s
+  Mean % Error:               42.1%
+
+5. EGO SPEED (System vs OXTS Ground Truth)
+----------------------------------------
+  Samples:                    4
+  MAE:                        0.00 km/h
+  Mean Bias:                  0.00 km/h
+  (Should be ~0 since system reads OXTS directly)
+
+6. SAMPLE FRAME-BY-FRAME COMPARISON (first 20 matched frames)
+--------------------------------------------------------------------------------
+  Frame   GT_Type      GT_Dist(m)   Sys_Dist(m)   Error(m)   Error%   Closing(m/s)  TTC(s)  
+  ------------------------------------------------------------------------------
+  13      Car          14.13        13.12         -1.00      -7.1     1.36          -1.00   
+  18      Car          13.02        12.12         -0.89      -6.9     1.42          -1.00   
+  32      Car          14.21        13.33         -0.88      -6.2     0.88          -1.00   
+  37      Car          13.13        12.51         -0.62      -4.7     1.30          -1.00   
+  51      Car          13.55        12.70         -0.85      -6.3     1.18          -1.00   
+  54      Car          12.93        12.11         -0.83      -6.4     1.27          -1.00   
+
+================================================================================
+  END OF REPORT
+================================================================================

@@ -16,16 +16,38 @@ DistanceEstimator::DistanceEstimator(const DistanceConfig& config)
 std::unordered_map<int, DistanceInfo> DistanceEstimator::estimate(
     const std::vector<Track*>& tracks) {
 
+    // Per-class reference heights (meters) for accurate distance estimation
+    // Class IDs: 0=person, 1=bike, 2=car, 3=motor, 4=rider, 5=bus, 6=train, 7=truck
+    static const float classHeights[] = {
+        1.7f,   // 0: person
+        1.1f,   // 1: bike (bicycle)
+        1.5f,   // 2: car
+        1.1f,   // 3: motor (motorcycle)
+        1.7f,   // 4: rider
+        3.2f,   // 5: bus
+        3.5f,   // 6: train/tram
+        2.8f,   // 7: truck
+        0.6f,   // 8: traffic_sign
+        0.5f,   // 9: traffic_light
+    };
+
     // Remove entries for tracks that no longer exist
     std::unordered_map<int, DistanceInfo> newDistances;
 
     for (const Track* track : tracks) {
         int id = track->getId();
+        int classId = track->getClassId();
         utils::BBox bbox = track->getBBox();
 
         DistanceInfo info;
         info.trackId = id;
         info.bbox = bbox.toRect();
+
+        // Select reference height based on detected class
+        float refHeight = config_.referenceHeight;  // default fallback
+        if (classId >= 0 && classId < 10) {
+            refHeight = classHeights[classId];
+        }
 
         // ===== EDGE TRUNCATION SHIELD =====
         // When bbox touches screen edges, height is truncated → distance inflated
@@ -38,15 +60,13 @@ std::unordered_map<int, DistanceInfo> DistanceEstimator::estimate(
         if (isTruncated) {
             // Vehicle is clipped at screen edge → mark as unreliable
             info.isEdgeTruncated = true;
-            // Still compute distance normally but flag it
-            info.rawDistance = computeDistance(bbox);
-            // If distance seems unrealistically small due to truncation, use fallback
+            info.rawDistance = cameraModel_.estimateDistance(bbox.height(), refHeight);
             if (info.rawDistance < 3.0f) {
                 float ratio = std::min(1.0f, bbox.height() / static_cast<float>(imageHeight_));
                 info.rawDistance = std::max(3.0f, 6.0f - (ratio * 4.0f));
             }
         } else {
-            info.rawDistance = computeDistance(bbox);
+            info.rawDistance = cameraModel_.estimateDistance(bbox.height(), refHeight);
         }
 
         // Clamp to valid range
@@ -69,12 +89,12 @@ std::unordered_map<int, DistanceInfo> DistanceEstimator::estimate(
                       info.smoothedDistance <= config_.maxDistance);
 
         // ===== LATERAL OFFSET + EGO-LANE CORRIDOR =====
-        // Decompose Euclidean distance into Z (longitudinal) and X (lateral)
+        // smoothedDistance is depth Z from pinhole model: Z = fy * H_real / h_pixel
+        // Lateral offset X = Z * (centerX - cx) / fx  (pinhole geometry)
         float pixelOffsetX = bbox.centerX() - cameraModel_.cx;
-        float angleX = std::atan2(pixelOffsetX, cameraModel_.fx);
 
-        info.longitudinalDist = info.smoothedDistance * std::cos(angleX);
-        info.lateralOffset = info.smoothedDistance * std::sin(angleX);
+        info.longitudinalDist = info.smoothedDistance;  // Already Z (depth)
+        info.lateralOffset = info.smoothedDistance * pixelOffsetX / cameraModel_.fx;
 
         // Vehicle is in ego path if lateral offset within corridor
         info.inEgoPath = (std::abs(info.lateralOffset) < config_.corridorHalfWidth);

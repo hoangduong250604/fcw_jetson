@@ -1,0 +1,82 @@
+================================================================================
+  FCW SYSTEM EVALUATION REPORT - 2011_09_26_drive_0029
+================================================================================
+
+1. DETECTION SUMMARY
+----------------------------------------
+  GT object-frames (annotated):  25
+  Relevant system detections:    21
+  (within GT distance zone, vehicle classes only)
+  Successfully matched:          21
+  Recall:                        84.0%
+  Precision:                     100.0%
+
+  NOTE: Precision is computed only against detections within the
+  spatial zone where GT is annotated. KITTI tracklets do NOT label
+  all visible objects, so detections outside GT zone are excluded.
+
+2. DETECTION PER CLASS
+----------------------------------------
+  Class           GT Count   Matched    Recall    
+  Car             14         12         85.7%
+  Truck           12         9          75.0%
+
+3. DISTANCE ESTIMATION ACCURACY
+----------------------------------------
+  Samples:                    21
+  MAE (Mean Abs Error):       5.89 m
+  RMSE:                       6.31 m
+  Mean Error:                 -3.27 m (bias)
+  Std Dev:                    5.40 m
+  Mean % Error:               27.2%
+  Median % Error:             26.8%
+
+  By distance range:
+      5-15 m: MAE=4.23m, Mean%Err=35.3%, N=3
+     15-30 m: MAE=5.52m, Mean%Err=27.0%, N=13
+     30-50 m: MAE=7.86m, Mean%Err=22.6%, N=5
+
+4. CLOSING SPEED ESTIMATION
+----------------------------------------
+  Samples:                    19
+  MAE:                        6.50 m/s
+  RMSE:                       9.27 m/s
+  Mean Bias:                  -3.95 m/s
+  Mean % Error:               47.2%
+
+5. EGO SPEED (System vs OXTS Ground Truth)
+----------------------------------------
+  Samples:                    389
+  MAE:                        0.00 km/h
+  Mean Bias:                  -0.00 km/h
+  (Should be ~0 since system reads OXTS directly)
+
+6. SAMPLE FRAME-BY-FRAME COMPARISON (first 20 matched frames)
+--------------------------------------------------------------------------------
+  Frame   GT_Type      GT_Dist(m)   Sys_Dist(m)   Error(m)   Error%   Closing(m/s)  TTC(s)  
+  ------------------------------------------------------------------------------
+  3       Car          24.00        24.27         0.27       1.1      0.00          -1.00   
+  5       Car          18.23        22.09         3.85       21.1     10.04         5.38    
+  7       Car          12.49        18.19         5.69       45.6     12.06         4.53    
+  9       Car          38.43        43.30         4.86       12.7     16.04         5.47    
+  12      Car          28.48        34.45         5.97       21.0     16.08         5.69    
+  15      Car          18.41        25.28         6.88       37.4     16.09         6.45    
+  117     Car          9.41         6.74          -2.68      -28.4    0.00          -1.00   
+  122     Car          13.57        9.25          -4.32      -31.9    -3.25         -1.00   
+  127     Car          18.23        13.52         -4.71      -25.8    -5.82         -1.00   
+  132     Car          23.43        18.40         -5.03      -21.5    -7.25         -1.00   
+  135     Truck        37.40        26.49         -10.91     -29.2    1.52          -1.00   
+  137     Car          28.92        23.42         -5.50      -19.0    -9.16         -1.00   
+  140     Truck        33.73        24.70         -9.03      -26.8    3.47          -1.00   
+  142     Car          34.88        28.53         -6.35      -18.2    -9.92         -1.00   
+  144     Truck        31.05        22.93         -8.12      -26.1    3.99          -1.00   
+  151     Truck        26.57        19.83         -6.74      -25.4    5.87          -1.00   
+  202     Truck        15.33        10.41         -4.92      -32.1    -0.91         -1.00   
+  209     Truck        16.29        10.48         -5.82      -35.7    -0.85         -1.00   
+  213     Truck        17.18        11.04         -6.14      -35.7    -0.70         -1.00   
+  219     Truck        19.06        12.44         -6.63      -34.8    -1.09         -1.00   
+  227     Truck        22.81        13.45         -9.37      -41.1    -1.64         -1.00   
+
+================================================================================
+  END OF REPORT
+================================================================================

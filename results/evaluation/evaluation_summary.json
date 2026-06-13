@@ -1,0 +1,227 @@
+[
+  {
+    "drive": "2011_09_26_drive_0001",
+    "num_matches": 55,
+    "recall": 94.82758620689656,
+    "precision": 100.0,
+    "distance_mae": 1.6043438322928107,
+    "distance_pct_err": 6.81607192605097,
+    "velocity_mae": 2.0675671925759858
+  },
+  {
+    "drive": "2011_09_26_drive_0005",
+    "num_matches": 91,
+    "recall": 97.84946236559139,
+    "precision": 100.0,
+    "distance_mae": 3.4318601366746457,
+    "distance_pct_err": 16.385001156747855,
+    "velocity_mae": 2.107990580380744
+  },
+  {
+    "drive": "2011_09_26_drive_0011",
+    "num_matches": 98,
+    "recall": 91.58878504672897,
+    "precision": 98.98989898989899,
+    "distance_mae": 2.0858015527080185,
+    "distance_pct_err": 7.986001648817705,
+    "velocity_mae": 2.8979584581294042
+  },
+  {
+    "drive": "2011_09_26_drive_0013",
+    "num_matches": 64,
+    "recall": 100.0,
+    "precision": 100.0,
+    "distance_mae": 2.355395756902158,
+    "distance_pct_err": 12.070532714597134,
+    "velocity_mae": 1.7592170843876278
+  },
+  {
+    "drive": "2011_09_26_drive_0014",
+    "num_matches": 168,
+    "recall": 87.04663212435233,
+    "precision": 93.33333333333333,
+    "distance_mae": 3.2716605571211606,
+    "distance_pct_err": 13.943307177856425,
+    "velocity_mae": 7.732329452248125
+  },
+  {
+    "drive": "2011_09_26_drive_0015",
+    "num_matches": 173,
+    "recall": 96.64804469273743,
+    "precision": 100.0,
+    "distance_mae": 3.272495907857122,
+    "distance_pct_err": 13.595876903241514,
+    "velocity_mae": 5.365149974643856
+  },
+  {
+    "drive": "2011_09_26_drive_0017",
+    "num_matches": 6,
+    "recall": 100.0,
+    "precision": 100.0,
+    "distance_mae": 0.8461329426191257,
+    "distance_pct_err": 6.2617082976540885,
+    "velocity_mae": 0.9032462470007875
+  },
+  {
+    "drive": "2011_09_26_drive_0018",
+    "num_matches": 31,
+    "recall": 93.93939393939394,
+    "precision": 100.0,
+    "distance_mae": 3.0783394430111493,
+    "distance_pct_err": 19.73217855940395,
+    "velocity_mae": 5.517905003583221
+  },
+  {
+    "drive": "2011_09_26_drive_0019",
+    "num_matches": 198,
+    "recall": 78.88446215139442,
+    "precision": 95.65217391304348,
+    "distance_mae": 1.9291076609427162,
+    "distance_pct_err": 9.800360216802002,
+    "velocity_mae": 2.710257544151278
+  },
+  {
+    "drive": "2011_09_26_drive_0022",
+    "num_matches": 309,
+    "recall": 95.07692307692308,
+    "precision": 100.0,
+    "distance_mae": 1.6721438016228056,
+    "distance_pct_err": 11.891959849347838,
+    "velocity_mae": 1.9930249380485998
+  },
+  {
+    "drive": "2011_09_26_drive_0023",
+    "num_matches": 227,
+    "recall": 99.12663755458514,
+    "precision": 100.0,
+    "distance_mae": 1.6878699378890636,
+    "distance_pct_err": 12.579669975008251,
+    "velocity_mae": 1.1815379396507315
+  },
+  {
+    "drive": "2011_09_26_drive_0028",
+    "num_matches": 26,
+    "recall": 65.0,
+    "precision": 100.0,
+    "distance_mae": 7.237291350671853,
+    "distance_pct_err": 28.33678284792068,
+    "velocity_mae": 13.235635279808152
+  },
+  {
+    "drive": "2011_09_26_drive_0029",
+    "num_matches": 21,
+    "recall": 84.0,
+    "precision": 100.0,
+    "distance_mae": 5.894785020541464,
+    "distance_pct_err": 27.164680406293282,
+    "velocity_mae": 6.504995427012714
+  },
+  {
+    "drive": "2011_09_26_drive_0032",
+    "num_matches": 91,
+    "recall": 95.78947368421052,
+    "precision": 100.0,
+    "distance_mae": 2.1050350569325826,
+    "distance_pct_err": 8.797518845381717,
+    "velocity_mae": 2.5866553259683913
+  },
+  {
+    "drive": "2011_09_26_drive_0039",
+    "num_matches": 316,
+    "recall": 94.32835820895522,
+    "precision": 99.6845425867508,
+    "distance_mae": 1.9379482988417698,
+    "distance_pct_err": 13.389425974922919,
+    "velocity_mae": 0.9836737992541644
+  },
+  {
+    "drive": "2011_09_26_drive_0048",
+    "num_matches": 39,
+    "recall": 95.1219512195122,
+    "precision": 100.0,
+    "distance_mae": 0.7524878779555456,
+    "distance_pct_err": 4.967668630163565,
+    "velocity_mae": 2.048383715412015
+  },
+  {
+    "drive": "2011_09_26_drive_0051",
+    "num_matches": 137,
+    "recall": 87.26114649681529,
+    "precision": 97.85714285714285,
+    "distance_mae": 3.7711549724264932,
+    "distance_pct_err": 19.078232253051183,
+    "velocity_mae": 5.661339978116019
+  },
+  {
+    "drive": "2011_09_26_drive_0056",
+    "num_matches": 149,
+    "recall": 81.4207650273224,
+    "precision": 98.67549668874173,
+    "distance_mae": 3.376574405151812,
+    "distance_pct_err": 15.67605305161967,
+    "velocity_mae": 5.301624858176231
+  },
+  {
+    "drive": "2011_09_26_drive_0057",
+    "num_matches": 50,
+    "recall": 90.9090909090909,
+    "precision": 100.0,
+    "distance_mae": 2.528813658894622,
+    "distance_pct_err": 9.172586124632627,
+    "velocity_mae": 3.7324752234749226
+  },
+  {
+    "drive": "2011_09_26_drive_0059",
+    "num_matches": 342,
+    "recall": 96.3380281690141,
+    "precision": 98.84393063583815,
+    "distance_mae": 2.2551182217153474,
+    "distance_pct_err": 11.64782151993155,
+    "velocity_mae": 2.0410132404596473
+  },
+  {
+    "drive": "2011_09_26_drive_0060",
+    "num_matches": 6,
+    "recall": 85.71428571428571,
+    "precision": 100.0,
+    "distance_mae": 2.5738283769512837,
+    "distance_pct_err": 7.4340268592437475,
+    "velocity_mae": 1.5445034677198894
+  },
+  {
+    "drive": "2011_09_26_drive_0061",
+    "num_matches": 405,
+    "recall": 99.75369458128078,
+    "precision": 100.0,
+    "distance_mae": 1.38142483689218,
+    "distance_pct_err": 8.722437875091178,
+    "velocity_mae": 1.390604217682777
+  },
+  {
+    "drive": "2011_09_26_drive_0064",
+    "num_matches": 232,
+    "recall": 97.07112970711297,
+    "precision": 99.14529914529915,
+    "distance_mae": 1.4580041827708006,
+    "distance_pct_err": 7.644053676856249,
+    "velocity_mae": 2.0217597308553876
+  },
+  {
+    "drive": "2011_09_26_drive_0084",
+    "num_matches": 366,
+    "recall": 98.6522911051213,
+    "precision": 100.0,
+    "distance_mae": 1.7773416224559846,
+    "distance_pct_err": 10.384963209690826,
+    "velocity_mae": 2.115099831391862
+  },
+  {
+    "drive": "2011_09_26_drive_0091",
+    "num_matches": 7,
+    "recall": 50.0,
+    "precision": 100.0,
+    "distance_mae": 5.176521823141038,
+    "distance_pct_err": 31.845386076675386,
+    "velocity_mae": 2.335850925252085
+  }
+]

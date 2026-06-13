@@ -374,8 +374,10 @@ bool Pipeline::processFrame() {
     float timestampMs = camera_.getPositionMs();
     std::unordered_map<int, SpeedInfo> speeds;
 
-    // Read full OXTS data from KITTI ground truth (if available)
-    if (oxtsReader_.isEnabled()) {
+    // Set ego speed: fixed value OR from KITTI OXTS ground truth
+    if (config_.fixedEgoSpeedKmh >= 0.0f) {
+        speedEstimator_.setEgoSpeed(config_.fixedEgoSpeedKmh);
+    } else if (oxtsReader_.isEnabled()) {
         OxtsData oxtsData = oxtsReader_.readFrame(frameCount_ - 1);  // 0-indexed
         if (oxtsData.valid) {
             speedEstimator_.setEgoSpeed(oxtsData.vf * 3.6f);  // m/s → km/h
@@ -406,6 +408,71 @@ bool Pipeline::processFrame() {
     if (config_.enableWarning) {
         RiskAssessment highest = riskAssessor_.getHighestRisk();
         warningSystem_.trigger(highest);
+    }
+
+    // ---- Eval CSV export (per-frame per-track data) ----
+    if (evalEnabled_ && evalLog_.is_open()) {
+        static const char* classNames[] = {
+            "person", "bike", "car", "motor", "rider",
+            "bus", "train", "truck", "traffic_sign", "traffic_light"
+        };
+        float egoKmh = speedEstimator_.getEgoSpeedKmh();
+        
+        if (activeTracks.empty()) {
+            evalLog_ << frameCount_ << ",-1,,,,,,,,,,,,," << egoKmh << ",," << std::endl;
+        } else {
+            for (const Track* track : activeTracks) {
+                int id = track->getId();
+                int cls = track->getClassId();
+                const char* clsName = (cls >= 0 && cls < 10) ? classNames[cls] : "unknown";
+                auto bbox = track->getBBox();
+                
+                float dist = 0.0f, latOff = 0.0f;
+                bool inEgo = false;
+                auto distIt = distances.find(id);
+                if (distIt != distances.end()) {
+                    dist = distIt->second.smoothedDistance;
+                    latOff = distIt->second.lateralOffset;
+                    inEgo = distIt->second.inEgoPath;
+                }
+                
+                float closingMs = 0.0f;
+                std::string vState = "UNKNOWN";
+                auto speedIt = speeds.find(id);
+                if (speedIt != speeds.end()) {
+                    closingMs = speedIt->second.closingSpeedMs;
+                    switch (speedIt->second.vehicleState) {
+                        case VehicleState::SAME_DIRECTION: vState = "SAME_DIR"; break;
+                        case VehicleState::STATIONARY: vState = "STATIONARY"; break;
+                        case VehicleState::ONCOMING: vState = "ONCOMING"; break;
+                        default: break;
+                    }
+                }
+                
+                float ttc = -1.0f;
+                auto ttcIt = ttcs.find(id);
+                if (ttcIt != ttcs.end() && ttcIt->second.valid) {
+                    ttc = ttcIt->second.ttcSmoothed;
+                }
+                
+                std::string riskStr = "SAFE";
+                auto riskIt = risks.find(id);
+                if (riskIt != risks.end()) {
+                    switch (riskIt->second.level) {
+                        case RiskLevel::CAUTION: riskStr = "CAUTION"; break;
+                        case RiskLevel::DANGER: riskStr = "DANGER"; break;
+                        case RiskLevel::CRITICAL: riskStr = "CRITICAL"; break;
+                        default: break;
+                    }
+                }
+                
+                evalLog_ << frameCount_ << "," << id << "," << cls << "," << clsName << ","
+                         << bbox.x1 << "," << bbox.y1 << "," << bbox.width() << "," << bbox.height() << ","
+                         << dist << "," << closingMs << "," << ttc << "," << latOff << ","
+                         << (inEgo ? 1 : 0) << "," << egoKmh << "," << vState << "," << riskStr
+                         << std::endl;
+            }
+        }
     }
 
     // ---- 8b. Traffic Sign/Light Classification ----
@@ -459,8 +526,32 @@ void Pipeline::stop() {
     if (videoWriter_.isOpened()) {
         videoWriter_.release();
     }
+    if (evalLog_.is_open()) {
+        evalLog_.close();
+    }
     cv::destroyAllWindows();
     LOG_INFO("Pipeline", "Pipeline stopped. Total frames: " + std::to_string(frameCount_));
+}
+
+// ==============================================================================
+// Eval CSV Export
+// ==============================================================================
+void Pipeline::enableEvalLog(const std::string& csvPath) {
+    namespace fs = std::filesystem;
+    fs::path p(csvPath);
+    if (p.has_parent_path()) {
+        fs::create_directories(p.parent_path());
+    }
+    evalLog_.open(csvPath, std::ios::out | std::ios::trunc);
+    if (evalLog_.is_open()) {
+        evalEnabled_ = true;
+        evalLog_ << "frame,track_id,class_id,class_name,bbox_x,bbox_y,bbox_w,bbox_h,"
+                 << "distance_m,closing_speed_ms,ttc_s,lateral_offset_m,in_ego_path,"
+                 << "ego_speed_kmh,vehicle_state,risk_level" << std::endl;
+        LOG_INFO("Pipeline", "Eval CSV enabled: " + csvPath);
+    } else {
+        LOG_ERROR("Pipeline", "Failed to open eval CSV: " + csvPath);
+    }
 }
 
 } // namespace fcw

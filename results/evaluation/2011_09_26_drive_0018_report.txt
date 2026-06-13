@@ -1,0 +1,93 @@
+================================================================================
+  FCW SYSTEM EVALUATION REPORT - 2011_09_26_drive_0018
+================================================================================
+
+1. DETECTION SUMMARY
+----------------------------------------
+  GT object-frames (annotated):  33
+  Relevant system detections:    31
+  (within GT distance zone, vehicle classes only)
+  Successfully matched:          31
+  Recall:                        93.9%
+  Precision:                     100.0%
+
+  NOTE: Precision is computed only against detections within the
+  spatial zone where GT is annotated. KITTI tracklets do NOT label
+  all visible objects, so detections outside GT zone are excluded.
+
+2. DETECTION PER CLASS
+----------------------------------------
+  Class           GT Count   Matched    Recall    
+  Car             113        31         27.4%
+  Truck           15         0          0.0%
+  Van             14         0          0.0%
+
+3. DISTANCE ESTIMATION ACCURACY
+----------------------------------------
+  Samples:                    31
+  MAE (Mean Abs Error):       3.08 m
+  RMSE:                       3.55 m
+  Mean Error:                 -2.62 m (bias)
+  Std Dev:                    2.40 m
+  Mean % Error:               19.7%
+  Median % Error:             18.3%
+
+  By distance range:
+      5-15 m: MAE=1.56m, Mean%Err=14.7%, N=12
+     15-30 m: MAE=3.69m, Mean%Err=18.0%, N=14
+     30-50 m: MAE=4.87m, Mean%Err=14.6%, N=4
+
+4. CLOSING SPEED ESTIMATION
+----------------------------------------
+  Samples:                    23
+  MAE:                        5.52 m/s
+  RMSE:                       5.84 m/s
+  Mean Bias:                  5.03 m/s
+  Mean % Error:               62.5%
+
+5. EGO SPEED (System vs OXTS Ground Truth)
+----------------------------------------
+  Samples:                    33
+  MAE:                        0.00 km/h
+  Mean Bias:                  -0.00 km/h
+  (Should be ~0 since system reads OXTS directly)
+
+6. SAMPLE FRAME-BY-FRAME COMPARISON (first 20 matched frames)
+--------------------------------------------------------------------------------
+  Frame   GT_Type      GT_Dist(m)   Sys_Dist(m)   Error(m)   Error%   Closing(m/s)  TTC(s)  
+  ------------------------------------------------------------------------------
+  5       Car          8.10         8.23          0.12       1.5      3.02          7.65    
+  9       Car          30.67        26.15         -4.52      -14.7    0.00          -1.00   
+  10      Car          31.44        27.10         -4.33      -13.8    -6.07         -1.00   
+  12      Car          33.12        27.16         -5.96      -18.0    -4.98         -1.00   
+  18      Car          38.47        33.81         -4.65      -12.1    0.00          -1.00   
+  40      Car          6.03         6.51          0.48       8.0      0.00          -1.00   
+  43      Car          8.50         6.36          -2.14      -25.2    0.68          -1.00   
+  45      Car          9.81         9.01          -0.80      -8.1     0.00          -1.00   
+  46      Car          11.01        8.90          -2.12      -19.2    0.00          -1.00   
+  47      Car          11.50        9.09          -2.41      -20.9    -0.39         -1.00   
+  48      Car          12.73        9.11          -3.61      -28.4    -1.82         -1.00   
+  50      Car          14.21        10.72         -3.49      -24.6    -2.01         -1.00   
+  51      Car          15.57        11.70         -3.87      -24.8    -3.87         -1.00   
+  52      Car          16.58        12.63         -3.95      -23.8    -4.43         -1.00   
+  53      Car          17.02        12.98         -4.04      -23.7    -4.26         -1.00   
+  54      Car          18.69        14.54         -4.15      -22.2    -5.37         -1.00   
+  55      Car          18.91        14.78         -4.13      -21.8    -5.32         -1.00   
+  56      Car          8.96         9.51          0.55       6.1      0.00          -1.00   
+  56      Car          20.87        16.52         -4.35      -20.8    -6.13         -1.00   
+  56      Car          19.87        15.71         -4.15      -20.9    -5.72         -1.00   
+  57      Car          20.89        16.67         -4.22      -20.2    -6.11         -1.00   
+  58      Car          10.51        9.37          -1.14      -10.8    0.65          -1.00   
+  59      Car          22.92        18.73         -4.19      -18.3    -6.78         -1.00   
+  59      Car          24.31        19.86         -4.45      -18.3    -7.91         -1.00   
+  59      Car          4.46         10.04         5.58       125.0    -0.50         -1.00   
+  61      Car          26.74        20.71         -6.03      -22.5    -7.33         -1.00   
+  62      Car          6.64         7.04          0.40       6.0      0.60          -1.00   
+  62      Car          26.02        25.97         -0.06      -0.2     0.00          -1.00   
+  63      Car          29.34        26.47         -2.87      -9.8     0.00          -1.00   
+  64      Car          8.21         6.76          -1.45      -17.7    0.98          -1.00   
+  65      Car          29.47        28.23         -1.24      -4.2     -7.04         -1.00   
+
+================================================================================
+  END OF REPORT
+================================================================================

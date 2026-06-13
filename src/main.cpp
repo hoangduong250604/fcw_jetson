@@ -90,6 +90,8 @@ int main(int argc, char* argv[]) {
     std::string oxtsFolder;
     std::string kittiRoot;
     std::string videoDir;
+    std::string evalLogPath;
+    float fixedEgoSpeed = -1.0f;
 
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
@@ -117,6 +119,10 @@ int main(int argc, char* argv[]) {
             oxtsFolder = argv[++i];
         } else if (arg == "--kitti-root" && i + 1 < argc) {
             kittiRoot = argv[++i];
+        } else if (arg == "--eval-log" && i + 1 < argc) {
+            evalLogPath = argv[++i];
+        } else if (arg == "--ego-speed" && i + 1 < argc) {
+            fixedEgoSpeed = std::stof(argv[++i]);
         } else if (arg == "--help" || arg == "-h") {
             printUsage(argv[0]);
             return 0;
@@ -167,6 +173,7 @@ int main(int argc, char* argv[]) {
         config.detectorConfig.labelsPath = "./models/labels.txt";
         config.oxtsDataFolder = oxtsFolder;
         config.kittiRoot = kittiRoot;
+        config.fixedEgoSpeedKmh = fixedEgoSpeed;
 
         {
             std::ofstream dbg("debug_trace.txt", std::ios::app);
@@ -195,7 +202,9 @@ int main(int argc, char* argv[]) {
         config.cameraType = useUSB ? "usb" : "csi";
         config.detectorConfig.modelPath = modelPath.empty() ? findModelPath() : modelPath;
         config.detectorConfig.labelsPath = "./models/labels.txt";
-        LOG_INFO("Main", "Camera mode - model: " + config.detectorConfig.modelPath);
+        config.fixedEgoSpeedKmh = fixedEgoSpeed >= 0 ? fixedEgoSpeed : 50.0f;  // Default 50km/h for camera
+        LOG_INFO("Main", "Camera mode - model: " + config.detectorConfig.modelPath
+                 + ", ego speed: " + std::to_string(config.fixedEgoSpeedKmh) + " km/h");
 
         if (!pipeline.init(config)) {
             LOG_FATAL("Main", "Failed to initialize pipeline");
@@ -212,6 +221,11 @@ int main(int argc, char* argv[]) {
             LOG_FATAL("Main", "No valid input specified and default config not found");
             return 1;
         }
+    }
+
+    // Enable eval CSV export if requested
+    if (!evalLogPath.empty()) {
+        pipeline.enableEvalLog(evalLogPath);
     }
 
     // Run the pipeline

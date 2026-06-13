@@ -1,0 +1,67 @@
+================================================================================
+  FCW SYSTEM EVALUATION REPORT - 2011_09_26_drive_0091
+================================================================================
+
+1. DETECTION SUMMARY
+----------------------------------------
+  GT object-frames (annotated):  14
+  Relevant system detections:    7
+  (within GT distance zone, vehicle classes only)
+  Successfully matched:          7
+  Recall:                        50.0%
+  Precision:                     100.0%
+
+  NOTE: Precision is computed only against detections within the
+  spatial zone where GT is annotated. KITTI tracklets do NOT label
+  all visible objects, so detections outside GT zone are excluded.
+
+2. DETECTION PER CLASS
+----------------------------------------
+  Class           GT Count   Matched    Recall    
+  Car             1          0          0.0%
+  Van             14         7          50.0%
+
+3. DISTANCE ESTIMATION ACCURACY
+----------------------------------------
+  Samples:                    7
+  MAE (Mean Abs Error):       5.18 m
+  RMSE:                       6.02 m
+  Mean Error:                 -5.15 m (bias)
+  Std Dev:                    3.12 m
+  Mean % Error:               31.8%
+  Median % Error:             40.3%
+
+  By distance range:
+      5-15 m: MAE=1.82m, Mean%Err=20.4%, N=3
+     15-30 m: MAE=7.70m, Mean%Err=40.5%, N=4
+
+4. CLOSING SPEED ESTIMATION
+----------------------------------------
+  Samples:                    7
+  MAE:                        2.34 m/s
+  RMSE:                       3.87 m/s
+  Mean Bias:                  1.86 m/s
+  Mean % Error:               38.3%
+
+5. EGO SPEED (System vs OXTS Ground Truth)
+----------------------------------------
+  Samples:                    340
+  MAE:                        0.00 km/h
+  Mean Bias:                  0.00 km/h
+  (Should be ~0 since system reads OXTS directly)
+
+6. SAMPLE FRAME-BY-FRAME COMPARISON (first 20 matched frames)
+--------------------------------------------------------------------------------
+  Frame   GT_Type      GT_Dist(m)   Sys_Dist(m)   Error(m)   Error%   Closing(m/s)  TTC(s)  
+  ------------------------------------------------------------------------------
+  100     Van          21.09        12.56         -8.52      -40.4    6.10          7.54    
+  102     Van          19.84        11.85         -7.99      -40.3    6.06          7.46    
+  103     Van          19.18        11.44         -7.73      -40.3    6.04          7.42    
+  108     Van          16.03        9.50          -6.53      -40.8    5.92          7.22    
+  115     Van          11.76        11.85         0.10       0.8      6.40          9.29    
+  118     Van          9.94         7.47          -2.48      -24.9    12.87         6.20    
+  121     Van          8.12         5.25          -2.87      -35.3    13.63         5.31    
+
+================================================================================
+  END OF REPORT
+================================================================================
