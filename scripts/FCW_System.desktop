@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=FCW – Cảnh báo Va chạm
+Comment=Khởi chạy hệ thống Forward Collision Warning
+Exec=bash -c 'cd "/media/duong/WD 500GB ELEMENTS/KLTN/fcw_jetson" && bash scripts/launcher.sh'
+Path=/media/duong/WD 500GB ELEMENTS/KLTN/fcw_jetson
+Icon=video-display
+Terminal=true
+Categories=Utility;Science;
+StartupNotify=false
