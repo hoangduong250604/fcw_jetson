@@ -537,7 +537,6 @@ void Pipeline::stop() {
 // Eval CSV Export
 // ==============================================================================
 void Pipeline::enableEvalLog(const std::string& csvPath) {
-    namespace fs = std::filesystem;
     fs::path p(csvPath);
     if (p.has_parent_path()) {
         fs::create_directories(p.parent_path());
