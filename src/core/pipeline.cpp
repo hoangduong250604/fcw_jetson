@@ -140,7 +140,6 @@ bool Pipeline::loadConfig(const std::string& systemConfigPath,
             config_.riskConfig.cautionTTC = warn["ttc"]["caution_threshold"].as<float>(5.0f);
             config_.riskConfig.enableSmoothing = warn["risk"]["enable_smoothing"].as<bool>(true);
             config_.riskConfig.smoothingWindow = warn["risk"]["smoothing_window"].as<int>(5);
-            config_.riskConfig.minConsecutive = warn["risk"]["min_consecutive_frames"].as<int>(3);
             config_.warningConfig.audioEnabled = warn["audio"]["enabled"].as<bool>(true);
         }
 

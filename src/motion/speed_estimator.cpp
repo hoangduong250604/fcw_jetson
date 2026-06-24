@@ -171,12 +171,13 @@ std::unordered_map<int, SpeedInfo> SpeedEstimator::estimate(
         info.vehicleState = state;
         info.ttcSeconds = ttcSeconds;
         info.egoIsBraking = egoIsBraking;
-        info.isApproaching = (smoothedClosingSpeed > config_.minClosingSpeedMs) 
+        info.isApproaching = (smoothedClosingSpeed > config_.minClosingSpeedMs)
                              && (ttcSeconds > 0 && ttcSeconds < config_.ttcThreshold);
-        
-        // If ego is braking hard AND approaching target → escalate urgency
-        if (egoIsBraking && info.isApproaching && ttcSeconds > 0 && ttcSeconds < config_.ttcThreshold * 1.5f) {
-            info.isApproaching = true;  // Widen approach window during hard braking
+
+        // Hard braking: widen detection window to 1.5× (9s) regardless of current state
+        if (egoIsBraking && smoothedClosingSpeed > config_.minClosingSpeedMs
+                         && ttcSeconds > 0 && ttcSeconds < config_.ttcThreshold * 1.5f) {
+            info.isApproaching = true;
         }
 
         info.valid = true;

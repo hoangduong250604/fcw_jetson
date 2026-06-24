@@ -50,6 +50,11 @@ std::unordered_map<int, TTCInfo> TTCCalculator::calculate(
 
     for (const Track* track : tracks) {
         int id = track->getId();
+        int classId = track->getClassId();
+
+        // Skip static infrastructure — traffic signs and lights cannot cause collisions
+        // BDD100K: 8=traffic sign, 9=traffic light
+        if (classId == 8 || classId == 9) continue;
 
         TTCInfo info;
         info.trackId = id;
@@ -172,7 +177,11 @@ float TTCCalculator::combineTTC(float ttcDist, float ttcScale) const {
     bool scaleValid = ttcScale > 0.0f;
 
     if (distValid && scaleValid && config_.useScaleMethod) {
-        // Weighted average
+        // Sanity check: if scale-based TTC disagrees too much with distance-based,
+        // the scale velocity is unreliable (e.g. lateral motion, new track) – ignore it
+        if (std::abs(ttcScale - ttcDist) > 2.0f) {
+            return ttcDist;
+        }
         float w = config_.scaleWeight;
         return w * ttcScale + (1.0f - w) * ttcDist;
     } else if (distValid) {

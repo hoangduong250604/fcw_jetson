@@ -33,49 +33,55 @@ std::unordered_map<int, RiskAssessment> CollisionRisk::assess(
             isEdgeTruncated = distIt->second.isEdgeTruncated;
         }
 
-        // Classify risk based on TTC
+        // === CLASSIFY RISK FROM TTC ===
         if (ttcInfo.valid && ttcInfo.isApproaching) {
             ra.level = classifyRisk(ttcInfo.ttcSmoothed);
-            
+
             // === ONCOMING VEHICLE SUPPRESSION ===
-            // Oncoming vehicles have high closing speed but will pass by, not collide
-            // Only allow warning if vehicle is directly in ego path (head-on scenario)
+            // Oncoming in opposite lane: SAFE. Oncoming head-on (in ego path): cap DANGER.
             if (ttcInfo.vehicleState == VehicleState::ONCOMING) {
                 if (!ra.inEgoPath) {
-                    ra.level = RiskLevel::SAFE;  // Not in our lane → no risk
-                } else {
-                    // In ego path + oncoming = potential head-on, keep warning but cap at DANGER
-                    if (ra.level > RiskLevel::DANGER) {
-                        ra.level = RiskLevel::DANGER;
-                    }
+                    ra.level = RiskLevel::SAFE;
+                } else if (ra.level > RiskLevel::DANGER) {
+                    ra.level = RiskLevel::DANGER;
                 }
             }
-            
+
             // === EDGE TRUNCATION SUPPRESSION ===
-            // Vehicle leaving frame has unreliable distance/bbox → suppress false alarm
             if (isEdgeTruncated) {
-                ra.level = RiskLevel::SAFE;  // Don't warn for vehicles exiting the frame
+                ra.level = RiskLevel::SAFE;
             }
-            
-            // Vehicles NOT in ego path: cap risk at CAUTION (no false alarms)
-            if (!ra.inEgoPath && ra.level > RiskLevel::CAUTION) {
-                ra.level = RiskLevel::CAUTION;
+
+            // === EGO-LANE ONLY ===
+            // FCW only warns for vehicles inside our lane corridor.
+            // Vehicles in adjacent lanes, opposite lane, or roadside are SAFE.
+            // This prevents false alarms for: parked cars, adjacent traffic,
+            // crossing vehicles at intersections, and vehicles passing on sides.
+            if (!ra.inEgoPath) {
+                ra.level = RiskLevel::SAFE;
+            }
+
+            // === CAUTION DISTANCE GATE ===
+            // CAUTION at long range (> 12m) means TTC < 5s only because of slow
+            // relative closing speed — not an urgent situation in typical urban driving.
+            // DANGER and CRITICAL are NOT gated: high closing speed at any distance is urgent.
+            if (ra.level == RiskLevel::CAUTION && ra.distance > config_.cautionMaxDistM) {
+                ra.level = RiskLevel::SAFE;
             }
         } else {
             ra.level = RiskLevel::SAFE;
         }
+        // NOTE: No proximity floor — avoids false alarms when ego is stopped
+        // and a vehicle crosses in front (new track, inEgoPath briefly true, no TTC yet).
 
-        // Smoothing: track risk level history
+        // === SMOOTHING: per-level consecutive frames required ===
         if (config_.enableSmoothing) {
             auto& history = riskHistory_[trackId];
             history.push_back(ra.level);
-
-            // Trim history
             while (static_cast<int>(history.size()) > config_.smoothingWindow) {
                 history.erase(history.begin());
             }
 
-            // Count consecutive frames at current level or higher
             int consecutive = 0;
             for (auto it = history.rbegin(); it != history.rend(); ++it) {
                 if (*it >= ra.level) consecutive++;
@@ -83,15 +89,9 @@ std::unordered_map<int, RiskAssessment> CollisionRisk::assess(
             }
             ra.consecutiveFrames = consecutive;
 
-            // Only escalate if enough consecutive frames
-            if (ra.level > RiskLevel::SAFE && consecutive < config_.minConsecutive) {
-                // Check previous risk level
+            if (ra.level > RiskLevel::SAFE && consecutive < getMinConsecutive(ra.level)) {
                 auto prevIt = risks_.find(trackId);
-                if (prevIt != risks_.end()) {
-                    ra.level = prevIt->second.level;
-                } else {
-                    ra.level = RiskLevel::SAFE;
-                }
+                ra.level = (prevIt != risks_.end()) ? prevIt->second.level : RiskLevel::SAFE;
             }
         }
 
@@ -116,6 +116,15 @@ RiskLevel CollisionRisk::classifyRisk(float ttc) const {
     if (ttc <= config_.dangerTTC) return RiskLevel::DANGER;
     if (ttc <= config_.cautionTTC) return RiskLevel::CAUTION;
     return RiskLevel::SAFE;
+}
+
+int CollisionRisk::getMinConsecutive(RiskLevel level) const {
+    switch (level) {
+        case RiskLevel::CRITICAL: return config_.minConsecutiveCritical;
+        case RiskLevel::DANGER:   return config_.minConsecutiveDanger;
+        case RiskLevel::CAUTION:  return config_.minConsecutiveCaution;
+        default:                  return 1;
+    }
 }
 
 RiskAssessment CollisionRisk::getHighestRisk() const {

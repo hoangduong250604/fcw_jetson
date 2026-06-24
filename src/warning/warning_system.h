@@ -124,7 +124,7 @@ private:
     // Audio linger: keep playing for a bit after risk clears
     int64_t lastActiveTimeMs_ = 0;       // Last time risk > SAFE was seen
     bool audioPlaying_ = false;          // Is audio currently playing
-    static constexpr int kAudioLingerMs = 3000;  // 3 seconds linger
+    static constexpr int kAudioLingerMs = 1000;  // 1 second linger
 };
 
 } // namespace fcw

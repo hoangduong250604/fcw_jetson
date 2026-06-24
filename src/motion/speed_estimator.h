@@ -36,7 +36,7 @@ struct SpeedConfig {
     
     // Closing speed thresholds
     float minClosingSpeedMs = 0.2f;      // Dead zone (0.72 km/h)
-    float ttcThreshold = 3.0f;           // TTC < 3s = approaching (warning threshold)
+    float ttcThreshold = 6.0f;           // TTC < 6s = approaching window (covers CAUTION 3-5s + DANGER/CRITICAL below)
     
     // State classification thresholds
     float oncomingThreshold = 15.0f;     // km/h - V_closing > V_ego + this → oncoming

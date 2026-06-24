@@ -26,7 +26,7 @@ struct VisConfig {
     bool showFPS = true;
     bool showRiskOverlay = true;
     bool showDangerZone = true;        // Dynamic danger zone overlay
-    bool showTrajectory = true;        // Track trajectory history
+    bool showTrajectory = false;       // Track trajectory history
     float overlayAlpha = 0.3f;
     float dangerZoneAlpha = 0.2f;
     // Detection zone config
