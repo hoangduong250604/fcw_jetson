@@ -373,14 +373,21 @@ bool Pipeline::processFrame() {
     float timestampMs = camera_.getPositionMs();
     std::unordered_map<int, SpeedInfo> speeds;
 
-    // Set ego speed: fixed value OR from KITTI OXTS ground truth
+    // Set ego speed: fixed config → KITTI OXTS → fallback 50 km/h
     if (config_.fixedEgoSpeedKmh >= 0.0f) {
         speedEstimator_.setEgoSpeed(config_.fixedEgoSpeedKmh);
-    } else if (oxtsReader_.isEnabled()) {
-        OxtsData oxtsData = oxtsReader_.readFrame(frameCount_ - 1);  // 0-indexed
-        if (oxtsData.valid) {
-            speedEstimator_.setEgoSpeed(oxtsData.vf * 3.6f);  // m/s → km/h
-            speedEstimator_.setOxtsData(oxtsData);            // Full data: yaw, accel, angular rate
+    } else {
+        bool gotOxts = false;
+        if (oxtsReader_.isEnabled()) {
+            OxtsData oxtsData = oxtsReader_.readFrame(frameCount_ - 1);  // 0-indexed
+            if (oxtsData.valid) {
+                speedEstimator_.setEgoSpeed(oxtsData.vf * 3.6f);  // m/s → km/h
+                speedEstimator_.setOxtsData(oxtsData);
+                gotOxts = true;
+            }
+        }
+        if (!gotOxts) {
+            speedEstimator_.setEgoSpeed(50.0f);
         }
     }
 
