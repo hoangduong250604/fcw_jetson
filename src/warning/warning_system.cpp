@@ -173,6 +173,12 @@ void WarningSystem::warningThreadFunc() {
 // Audio Playback (Cross-Platform)
 // ==============================================================================
 void WarningSystem::playAudio(RiskLevel level) {
+    // CAUTION intentionally plays no sound: it fires frequently in normal
+    // traffic (the whole point of a "monitor, not yet dangerous" level), and
+    // production ADAS/FCW products generally reserve audible alerts for
+    // DANGER/CRITICAL to avoid alert fatigue from constant CAUTION chirps.
+    if (level == RiskLevel::CAUTION) return;
+
 #ifdef _WIN32
     // Windows: Use Beep() for instant tonal alerts
     // Different frequencies/durations per risk level
@@ -185,10 +191,6 @@ void WarningSystem::playAudio(RiskLevel level) {
         case RiskLevel::DANGER:
             freq = config_.dangerFreqHz;
             dur = config_.dangerDurationMs;
-            break;
-        case RiskLevel::CAUTION:
-            freq = config_.cautionFreqHz;
-            dur = config_.cautionDurationMs;
             break;
         default:
             return;
@@ -208,17 +210,22 @@ void WarningSystem::playAudio(RiskLevel level) {
     switch (level) {
         case RiskLevel::CRITICAL: soundFile = config_.criticalSound; break;
         case RiskLevel::DANGER:   soundFile = config_.dangerSound; break;
-        case RiskLevel::CAUTION:  soundFile = config_.cautionSound; break;
         default: return;
     }
 
     std::string fullPath = config_.soundsDir + soundFile;
-    // Run aplay async (non-blocking)
-    std::string cmd = "aplay -q \"" + fullPath + "\" &";
+    // Run aplay async (non-blocking). stderr redirected to /dev/null:
+    // firing CRITICAL/DANGER alerts back-to-back (cooldowns as low as 400ms)
+    // spawns overlapping aplay processes; when one exits while another is
+    // mid-write to the shared ALSA device, the OS can interrupt the other's
+    // write() with EINTR, which aplay reports as "pcm_write: write error:
+    // Interrupted system call" on stderr. Harmless (that one alert's sound
+    // is just cut short) but was showing up unfiltered in the console/log.
+    std::string cmd = "aplay -q \"" + fullPath + "\" 2>/dev/null &";
     int ret = system(cmd.c_str());
     if (ret != 0) {
-        // Fallback: try paplay (PulseAudio) 
-        cmd = "paplay \"" + fullPath + "\" &";
+        // Fallback: try paplay (PulseAudio)
+        cmd = "paplay \"" + fullPath + "\" 2>/dev/null &";
         system(cmd.c_str());
     }
 #endif
