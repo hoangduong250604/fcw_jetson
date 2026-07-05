@@ -16,6 +16,21 @@ DistanceEstimator::DistanceEstimator(const DistanceConfig& config)
 std::unordered_map<int, DistanceInfo> DistanceEstimator::estimate(
     const std::vector<Track*>& tracks) {
 
+    // Per-class reference heights (meters) for accurate distance estimation
+    // Class IDs: 0=person, 1=bike, 2=car, 3=motor, 4=rider, 5=bus, 6=train, 7=truck
+    static const float classHeights[] = {
+        1.7f,   // 0: person
+        1.1f,   // 1: bike (bicycle)
+        1.5f,   // 2: car
+        1.1f,   // 3: motor (motorcycle)
+        1.7f,   // 4: rider
+        3.2f,   // 5: bus
+        3.5f,   // 6: train/tram
+        2.8f,   // 7: truck
+        0.6f,   // 8: traffic_sign
+        0.5f,   // 9: traffic_light
+    };
+
     // Remove entries for tracks that no longer exist
     std::unordered_map<int, DistanceInfo> newDistances;
 
@@ -29,7 +44,10 @@ std::unordered_map<int, DistanceInfo> DistanceEstimator::estimate(
         info.bbox = bbox.toRect();
 
         // Select reference height based on detected class
-        float refHeight = referenceHeightForClass(classId);
+        float refHeight = config_.referenceHeight;  // default fallback
+        if (classId >= 0 && classId < 10) {
+            refHeight = classHeights[classId];
+        }
 
         // ===== EDGE TRUNCATION SHIELD =====
         // When bbox touches screen edges, height is truncated → distance inflated
@@ -88,43 +106,17 @@ std::unordered_map<int, DistanceInfo> DistanceEstimator::estimate(
     return trackDistances_;
 }
 
-float DistanceEstimator::estimateSingle(const utils::BBox& bbox, int classId) const {
-    return computeDistance(bbox, classId);
+float DistanceEstimator::estimateSingle(const utils::BBox& bbox) const {
+    return computeDistance(bbox);
 }
 
-// Per-class reference heights (meters) for accurate distance estimation.
-// Class IDs: 0=person, 1=bike, 2=car, 3=motor, 4=rider, 5=bus, 6=train, 7=truck,
-//            8=traffic_sign, 9=traffic_light. Shared by estimate() (the live
-// per-track path) and computeDistance()/estimateSingle() (the single-bbox
-// query path) so both APIs use the same table instead of one silently
-// reverting to a flat reference height.
-float DistanceEstimator::referenceHeightForClass(int classId) const {
-    static const float classHeights[] = {
-        1.7f,   // 0: person
-        1.1f,   // 1: bike (bicycle)
-        1.5f,   // 2: car
-        1.1f,   // 3: motor (motorcycle)
-        1.7f,   // 4: rider
-        3.2f,   // 5: bus
-        3.5f,   // 6: train/tram
-        2.8f,   // 7: truck
-        0.6f,   // 8: traffic_sign
-        0.5f,   // 9: traffic_light
-    };
-    if (classId >= 0 && classId < 10) {
-        return classHeights[classId];
-    }
-    return config_.referenceHeight;  // unknown class → configured flat fallback
-}
-
-float DistanceEstimator::computeDistance(const utils::BBox& bbox, int classId) const {
+float DistanceEstimator::computeDistance(const utils::BBox& bbox) const {
     float distance = -1.0f;
-    float refHeight = referenceHeightForClass(classId);
 
     switch (config_.method) {
         case DistanceMethod::BBOX_HEIGHT: {
             float bboxHeight = bbox.height();
-            distance = cameraModel_.estimateDistance(bboxHeight, refHeight);
+            distance = cameraModel_.estimateDistance(bboxHeight, config_.referenceHeight);
             break;
         }
 
@@ -135,7 +127,7 @@ float DistanceEstimator::computeDistance(const utils::BBox& bbox, int classId) c
         }
 
         case DistanceMethod::COMBINED: {
-            float d1 = cameraModel_.estimateDistance(bbox.height(), refHeight);
+            float d1 = cameraModel_.estimateDistance(bbox.height(), config_.referenceHeight);
             float d2 = cameraModel_.estimateDistanceGroundPlane(bbox.y2);
 
             if (d1 > 0.0f && d2 > 0.0f) {
@@ -154,10 +146,10 @@ float DistanceEstimator::computeDistance(const utils::BBox& bbox, int classId) c
                 distance = bevEstimator_->estimateDistance(bottomCenter, imageWidth_, imageHeight_);
                 // Fallback to bbox height if BEV not calibrated
                 if (distance < 0.0f) {
-                    distance = cameraModel_.estimateDistance(bbox.height(), refHeight);
+                    distance = cameraModel_.estimateDistance(bbox.height(), config_.referenceHeight);
                 }
             } else {
-                distance = cameraModel_.estimateDistance(bbox.height(), refHeight);
+                distance = cameraModel_.estimateDistance(bbox.height(), config_.referenceHeight);
             }
             break;
         }

@@ -105,7 +105,6 @@ private:
     ThreadedPipelineConfig config_;
     std::atomic<bool> running_{false};
     std::atomic<bool> initialized_{false};
-    int frameCount_ = 0;  // processing-thread frame counter (for detect_interval cadence + FrameResult.frameId)
 
     // Video output
     cv::VideoWriter videoWriter_;

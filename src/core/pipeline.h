@@ -60,13 +60,6 @@ struct PipelineConfig {
     bool enableWarning = true;
     bool enableVisualization = true;
 
-    // Run the detector every Nth frame (1 = every frame). On skipped frames
-    // the tracker advances via Kalman-only prediction (ObjectTracker::
-    // predictOnly) instead of being penalized as missed. Default of 2
-    // matches this member's own pre-existing default from before this was
-    // wired up (Jetson Nano's compute budget is the reason to skip frames).
-    int detectInterval = 2;
-
     // Output
     bool saveVideo = false;
     std::string videoOutputPath;
@@ -150,6 +143,10 @@ private:
     bool initialized_ = false;
     bool running_ = false;
     int frameCount_ = 0;
+
+    // Detection frame skipping
+    int detectInterval_ = 2;              // Run detection every N frames
+    DetectionResult lastDetections_;      // Cached detection result
 
     // Modules
     Camera camera_;

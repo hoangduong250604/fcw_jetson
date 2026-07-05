@@ -59,13 +59,6 @@ public:
      */
     std::vector<Track*> update(const DetectionResult& detections);
 
-    /**
-     * Predict-only step: advance all tracks using Kalman prediction
-     * without associating new detections. Used for frame skipping.
-     * Tracks keep moving smoothly without getting penalized as "lost".
-     */
-    std::vector<Track*> predictOnly();
-
     /** Get all active tracks (confirmed only) */
     std::vector<Track*> getActiveTracks() const;
 
@@ -103,6 +96,13 @@ private:
      * @return Vector of (track_idx, detection_idx) pairs
      */
     std::vector<std::pair<int, int>> hungarianAssignment(
+        const std::vector<std::vector<float>>& costMatrix) const;
+
+    /**
+     * Simple greedy association (fallback, faster than Hungarian).
+     * For each detection, find the best matching track with IoU above threshold.
+     */
+    std::vector<std::pair<int, int>> greedyAssignment(
         const std::vector<std::vector<float>>& costMatrix) const;
 
     // ---- Track Management ----

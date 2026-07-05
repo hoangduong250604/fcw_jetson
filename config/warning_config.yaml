@@ -24,17 +24,14 @@ warning:
     min_consecutive_frames: 3
 
   # Audio alert
-  # NOTE: CAUTION intentionally plays no sound (see warning_system.cpp
-  # playAudio) — it fires frequently in normal traffic, and production
-  # ADAS/FCW products generally reserve audible alerts for DANGER/CRITICAL
-  # to avoid alert fatigue. There is no caution_sound key for this reason.
-  # (Linux/Jetson uses these .wav paths via aplay; Windows uses Beep() with
-  # the critical_freq_hz/danger_freq_hz-style fields in system config instead.)
   audio:
     enabled: true
-    sounds_dir: "./sounds/"
-    critical_sound: "critical_warning.wav"
-    danger_sound: "danger_warning.wav"
+    # Alert sound files
+    critical_sound: "./assets/sounds/critical.wav"
+    danger_sound: "./assets/sounds/danger.wav"
+    caution_sound: "./assets/sounds/caution.wav"
+    # Repeat interval (milliseconds)
+    repeat_interval_ms: 500
 
   # Visual alert
   visual:
