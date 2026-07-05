@@ -38,7 +38,12 @@ system:
     # Target FPS (0 = unlimited)
     target_fps: 15
     # Detection skip: run detection every N frames (1=every frame, 2=every other, 3=every 3rd)
-    detect_interval: 2
+    # Now actually wired up (previously ignored regardless of this value —
+    # the detector ran every frame no matter what). Default kept at 1 to
+    # preserve the exact behavior all published results were measured on;
+    # raise it only if you deliberately want to trade accuracy for FPS
+    # (untested on Jetson hardware — verify before trusting it in the field).
+    detect_interval: 1
     # Use GPU acceleration
     use_gpu: true
     # GPU device ID

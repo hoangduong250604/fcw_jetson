@@ -1,18 +1,21 @@
 #pragma once
 // ==============================================================================
-// Traffic Sign Processor - Secondary YOLOv8n for traffic sign/light classification
+// Traffic Sign Processor - traffic light color classification
 // ==============================================================================
 //
-// Runs a lightweight YOLOv8n (nano) model on cropped traffic light/sign regions
-// detected by the main BDD100K detector. This replaces the unreliable HSV
-// color analysis with AI-based classification.
+// CURRENT BEHAVIOR: classification is done by HSV color-range analysis on
+// cropped traffic-light regions detected by the main BDD100K detector
+// (classifyLightByHSV), with CLAHE brightness normalization applied first to
+// reduce sensitivity to glare/backlight/exposure. Disabled by default
+// (traffic_sign.enabled: false in system_config.yaml) since the main
+// detector already localizes traffic lights/signs directly (class 8/9).
 //
-// Architecture:
-//   Main detector (BDD100K) → detects "traffic light" / "traffic sign" bbox
-//   TrafficSignProcessor    → crops ROI → runs YOLOv8n → specific class
-//
-// Performance: ~2ms per crop on Jetson Nano (320x320 input, TensorRT FP16)
-//              Runs every N frames with result caching → near-zero overhead
+// The secondary-YOLOv8n-classifier scaffolding below (detectInROI,
+// classifyCrop, decodeOutput, applyNMS, the ONNX/dnn session members) is NOT
+// implemented — those are stub methods that return empty results. process()
+// never calls them; it only ever runs the HSV path. Kept as a documented
+// extension point for a future "replace HSV with a trained classifier"
+// upgrade, not as a currently-active AI classification path.
 // ==============================================================================
 
 #include <string>
@@ -70,11 +73,8 @@ struct TrafficSignResult {
 };
 
 /**
- * Lightweight traffic sign/light processor.
- *
- * Uses a secondary YOLOv8n model trained on 18 traffic classes to classify
- * traffic light states and identify traffic sign types. Runs on cropped
- * regions from the main detector's output.
+ * Traffic light color classifier. Currently HSV-based (see file header for
+ * why); the secondary-model path is unimplemented scaffolding.
  */
 class TrafficSignProcessor {
 public:
@@ -149,6 +149,12 @@ private:
     int numAnchors_ = 2100;   // 320x320 → fewer anchors than 640x640
     std::vector<std::string> labels_;
     TrafficSignResult cachedResult_;
+
+    // CLAHE applied to the HSV V-channel before color thresholding, to
+    // reduce classifyLightByHSV's sensitivity to glare/backlight/exposure.
+    // Created once in init() and reused (allocating a fresh CLAHE per call
+    // would be wasteful even though crops are small).
+    cv::Ptr<cv::CLAHE> clahe_;
 
     // Traffic light class indices in the 13-class merged model:
     // 0=Green Light, 1=Red Light, 2=Yellow Light

@@ -75,16 +75,24 @@ std::unordered_map<int, TTCInfo> TTCCalculator::calculate(
         info.isApproaching = speed.isApproaching;
         info.vehicleState = speed.vehicleState;     // Propagate vehicle state
 
-        // ---- Method 1: Distance-based TTC ----
+        // ---- Method 1: Distance-based TTC (raw, unclamped) ----
         info.ttcDistance = computeTTCFromDistance(info.distance, info.relativeSpeed);
 
-        // ---- Method 2: Scale-based TTC ----
+        // ---- Method 2: Scale-based TTC (raw, unclamped) ----
         if (config_.useScaleMethod) {
             info.ttcScale = computeTTCFromScale(track);
         }
 
         // ---- Combined TTC ----
-        info.ttcCombined = combineTTC(info.ttcDistance, info.ttcScale);
+        // Confidence-adaptive fusion: both the disagreement sanity-check and
+        // the blend weight are computed on RAW (unclamped) TTC values, so two
+        // genuinely divergent estimates can't be masked by both saturating to
+        // the same clamp bucket. Only the final result is clamped below.
+        info.scaleConfidence = config_.useScaleMethod ? scaleConfidenceFor(track, info.distance) : 0.0f;
+        info.ttcCombined = combineTTC(info.ttcDistance, info.ttcScale, info.scaleConfidence);
+        if (info.ttcCombined > 0.0f) {
+            info.ttcCombined = utils::clamp(info.ttcCombined, config_.minValidTTC, config_.maxTTC);
+        }
 
         // ---- EMA Smoothing ----
         float rawTTC = info.ttcCombined;
@@ -128,13 +136,9 @@ float TTCCalculator::computeTTCFromDistance(float distance, float relativeSpeed)
         return -1.0f;  // Not approaching or invalid distance
     }
 
-    float ttc = distance / relativeSpeed;
-
-    // Clamp to valid range
-    if (ttc > config_.maxTTC) return config_.maxTTC;
-    if (ttc < config_.minValidTTC) return config_.minValidTTC;
-
-    return ttc;
+    // Intentionally NOT clamped here: combineTTC needs the raw magnitude to
+    // judge disagreement between methods. The caller clamps the final result.
+    return distance / relativeSpeed;
 }
 
 // ==============================================================================
@@ -160,29 +164,51 @@ float TTCCalculator::computeTTCFromScale(const Track* track) const {
         return -1.0f;  // Not approaching (scale not increasing)
     }
 
-    float ttc = area / scaleVelocity;
+    // Intentionally NOT clamped here — see computeTTCFromDistance.
+    return area / scaleVelocity;
+}
 
-    // Clamp
-    if (ttc > config_.maxTTC) return config_.maxTTC;
-    if (ttc < config_.minValidTTC) return config_.minValidTTC;
+// ==============================================================================
+// Scale-method confidence (cheap approximation of inverse-variance weighting)
+// ==============================================================================
+float TTCCalculator::scaleConfidenceFor(const Track* track, float distance) const {
+    // Track maturity: the Kalman scale-velocity state (vs) needs a few
+    // successful updates to converge; a brand-new track's vs is unreliable.
+    float maturity = utils::clamp(
+        static_cast<float>(track->getHitCount()) / config_.scaleMatureHits, 0.0f, 1.0f);
 
-    return ttc;
+    // Range attenuation: bbox area shrinks ~1/distance^2, so area noise
+    // dominates the scale signal at long range (matches this file's own
+    // header note that scale-based TTC is "less accurate at long range").
+    float rangeConf = 1.0f - utils::clamp(distance / config_.scaleMaxUsefulRange, 0.0f, 1.0f);
+    rangeConf = std::max(rangeConf, config_.scaleMinConfidenceFloor);
+
+    return maturity * rangeConf;
 }
 
 // ==============================================================================
 // Combined TTC
 // ==============================================================================
-float TTCCalculator::combineTTC(float ttcDist, float ttcScale) const {
+float TTCCalculator::combineTTC(float ttcDist, float ttcScale, float scaleConfidence) const {
     bool distValid = ttcDist > 0.0f;
     bool scaleValid = ttcScale > 0.0f;
 
     if (distValid && scaleValid && config_.useScaleMethod) {
-        // Sanity check: if scale-based TTC disagrees too much with distance-based,
-        // the scale velocity is unreliable (e.g. lateral motion, new track) – ignore it
-        if (std::abs(ttcScale - ttcDist) > 2.0f) {
+        // Sanity check on RAW values (not yet clamped): if scale-based TTC
+        // disagrees too much with distance-based, the scale velocity is
+        // unreliable (e.g. lateral motion, new track) – ignore it entirely.
+        // Doing this before any clamping prevents two genuinely divergent
+        // raw estimates from both saturating into the same clamp bucket and
+        // being wrongly read as "agreeing".
+        if (std::abs(ttcScale - ttcDist) > config_.scaleSanityThreshold) {
             return ttcDist;
         }
-        float w = config_.scaleWeight;
+        // Confidence-adaptive blend: scaleWeight is the ceiling, reached only
+        // when scaleConfidence == 1 (mature track, close range). This replaces
+        // the previous fixed 70/30 split with a weight that tapers down for
+        // new tracks and long-range targets, where the scale method is known
+        // to be noisier.
+        float w = config_.scaleWeight * scaleConfidence;
         return w * ttcScale + (1.0f - w) * ttcDist;
     } else if (distValid) {
         return ttcDist;

@@ -60,6 +60,12 @@ struct PipelineConfig {
     bool enableWarning = true;
     bool enableVisualization = true;
 
+    // Run the detector every Nth frame (1 = every frame, matches all prior
+    // tested/published behavior). On skipped frames the tracker advances via
+    // Kalman-only prediction (ObjectTracker::predictOnly) instead of being
+    // penalized as missed. Only takes effect if > 1 is explicitly configured.
+    int detectInterval = 1;
+
     // Output
     bool saveVideo = false;
     std::string videoOutputPath;
@@ -143,10 +149,6 @@ private:
     bool initialized_ = false;
     bool running_ = false;
     int frameCount_ = 0;
-
-    // Detection frame skipping
-    int detectInterval_ = 2;              // Run detection every N frames
-    DetectionResult lastDetections_;      // Cached detection result
 
     // Modules
     Camera camera_;

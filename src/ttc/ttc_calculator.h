@@ -40,7 +40,16 @@ struct TTCConfig {
     float minValidTTC = 0.5f;       // Below this = imminent collision
     float smoothingAlpha = 0.3f;    // EMA smoothing
     bool useScaleMethod = true;     // Also compute scale-based TTC
-    float scaleWeight = 0.3f;       // Weight for scale-based TTC in combined
+    float scaleWeight = 0.3f;       // Max weight for scale-based TTC (reached only
+                                    // when scaleConfidence == 1; see combineTTC)
+    float scaleSanityThreshold = 2.0f;  // |ttcScale-ttcDist| above this (on RAW,
+                                         // unclamped values) => distrust scale entirely
+    float scaleMatureHits = 5.0f;   // Hits needed for the Kalman scale-velocity
+                                    // state to be considered fully converged
+    float scaleMaxUsefulRange = 50.0f;   // Beyond this, scale-based confidence
+                                         // tapers toward the floor (bbox area
+                                         // noise dominates at long range)
+    float scaleMinConfidenceFloor = 0.15f;  // Never fully zero out scale method
 };
 
 /**
@@ -55,6 +64,8 @@ struct TTCInfo {
     float ttcScale = -1.0f;             // TTC from scale method (seconds)
     float ttcCombined = -1.0f;          // Combined TTC (seconds)
     float ttcSmoothed = -1.0f;          // Final smoothed TTC (seconds)
+    float scaleConfidence = 0.0f;       // Adaptive weight actually given to the
+                                        // scale method this frame (diagnostics)
 
     bool isApproaching = false;          // Vehicle is getting closer
     bool valid = false;                  // TTC computation is valid
@@ -110,9 +121,20 @@ private:
     float computeTTCFromScale(const Track* track) const;
 
     /**
-     * Combine distance-based and scale-based TTC.
+     * Combine distance-based and scale-based TTC using a confidence-adaptive
+     * weight (see scaleConfidenceFor) instead of a fixed ratio. Operates on
+     * RAW (unclamped) inputs; the caller clamps only the final result.
      */
-    float combineTTC(float ttcDist, float ttcScale) const;
+    float combineTTC(float ttcDist, float ttcScale, float scaleConfidence) const;
+
+    /**
+     * How much to trust the scale-based method this frame, in [floor, 1].
+     * Approximates inverse-variance weighting cheaply from two signals whose
+     * effect on scale-TTC noise is well understood: track maturity (the
+     * Kalman scale-velocity state needs a few hits to converge) and distance
+     * (bbox area noise dominates at long range).
+     */
+    float scaleConfidenceFor(const Track* track, float distance) const;
 
     TTCConfig config_;
     std::unordered_map<int, TTCInfo> trackTTCs_;

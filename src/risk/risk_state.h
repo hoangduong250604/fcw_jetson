@@ -4,6 +4,7 @@
 // ==============================================================================
 
 #include <string>
+#include <opencv2/core.hpp>
 
 namespace fcw {
 
@@ -25,6 +26,22 @@ inline std::string riskLevelToString(RiskLevel level) {
         case RiskLevel::DANGER:   return "DANGER";
         case RiskLevel::CRITICAL: return "CRITICAL";
         default:                  return "UNKNOWN";
+    }
+}
+
+/**
+ * Canonical BGR color for each risk level. Shared by all HUD/overlay code
+ * (visualization.cpp, threaded_pipeline.cpp) so the mapping can't silently
+ * drift between call sites — previously each drew its own independent copy
+ * of this switch, and two of them had already disagreed on the DANGER color.
+ */
+inline cv::Scalar riskLevelColor(RiskLevel level) {
+    switch (level) {
+        case RiskLevel::SAFE:     return cv::Scalar(0, 255, 0);    // green
+        case RiskLevel::CAUTION:  return cv::Scalar(0, 255, 255);  // yellow
+        case RiskLevel::DANGER:   return cv::Scalar(0, 165, 255);  // orange
+        case RiskLevel::CRITICAL: return cv::Scalar(0, 0, 255);    // red
+        default:                  return cv::Scalar(0, 255, 0);
     }
 }
 

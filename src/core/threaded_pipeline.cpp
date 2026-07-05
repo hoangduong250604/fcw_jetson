@@ -152,9 +152,6 @@ void ThreadedPipeline::captureThread() {
             break;
         }
 
-        // Update shared state
-        state_.setCurrentFrame(frame);
-
         // Signal frame buffer for processing thread
         {
             std::lock_guard<std::mutex> lock(frameBufferMutex_);
@@ -190,21 +187,37 @@ void ThreadedPipeline::processingThread() {
         if (frame.empty()) continue;
 
         timer_.frameTick();
+        frameCount_++;
 
-        // Step 1: Detection
+        // Step 1: Detection (every frame by default; every Nth if
+        // detectInterval is explicitly configured > 1 — see PipelineConfig)
         DetectionResult detections;
+        bool detectionRanThisFrame = false;
         if (cfg.enableDetection) {
-            utils::ScopedTimer st(timer_, "detection");
-            detections = detector_.detect(frame);
+            bool shouldRunDetector = ((frameCount_ - 1) % cfg.detectInterval == 0);
+            if (shouldRunDetector) {
+                utils::ScopedTimer st(timer_, "detection");
+                try {
+                    detections = detector_.detect(frame);
+                } catch (const std::exception& e) {
+                    LOG_ERROR("ThreadedPipeline", std::string("Detector threw, skipping this frame's detections: ") + e.what());
+                    detections = DetectionResult();
+                }
+                detectionRanThisFrame = true;
+            }
         }
-        state_.setDetections(detections);
-        state_.setDetectionTimeMs(detections.inferenceTimeMs);
 
         // Step 2: Tracking
         std::vector<Track*> activeTracks;
         if (cfg.enableTracking) {
             utils::ScopedTimer st(timer_, "tracking");
-            activeTracks = tracker_.update(detections);
+            if (cfg.enableDetection && !detectionRanThisFrame) {
+                // Skipped frame: advance via Kalman-only prediction, not
+                // penalized as missed (mirrors Pipeline::processFrame()).
+                activeTracks = tracker_.predictOnly();
+            } else {
+                activeTracks = tracker_.update(detections);
+            }
         }
 
         // Step 3: Distance
@@ -213,7 +226,6 @@ void ThreadedPipeline::processingThread() {
             utils::ScopedTimer st(timer_, "distance");
             distances = distanceEstimator_.estimate(activeTracks);
         }
-        state_.setDistances(distances);
 
         // Step 4: Speed (timestamp-based)
         float timestampMs = camera_.getPositionMs();
@@ -223,7 +235,6 @@ void ThreadedPipeline::processingThread() {
             utils::ScopedTimer st(timer_, "speed");
             speeds = speedEstimator_.estimate(distances, timestampMs);
         }
-        state_.setSpeeds(speeds);
 
         // Step 5: TTC
         std::unordered_map<int, TTCInfo> ttcs;
@@ -231,7 +242,6 @@ void ThreadedPipeline::processingThread() {
             utils::ScopedTimer st(timer_, "ttc");
             ttcs = ttcCalculator_.calculate(activeTracks, distances, speeds);
         }
-        state_.setTTCs(ttcs);
 
         // Step 6: Risk
         std::unordered_map<int, RiskAssessment> risks;
@@ -239,12 +249,34 @@ void ThreadedPipeline::processingThread() {
             utils::ScopedTimer st(timer_, "risk");
             risks = riskAssessor_.assess(ttcs, distances);
         }
-        state_.setRisks(risks);
-        state_.setHighestRisk(riskAssessor_.getHighestRisk());
 
-        // Store track snapshots
-        state_.setTrackSnapshots(activeTracks);
-        state_.setFPS(timer_.getFPS());
+        // Publish everything from this cycle as ONE atomic bundle (see
+        // FCWState::FrameResult) so the display thread can never mix this
+        // cycle's frame with another cycle's tracks/TTC/risk data.
+        FCWState::FrameResult result;
+        result.frameId = frameCount_;
+        result.frame = frame;
+        result.detections = detections;
+        for (const Track* t : activeTracks) {
+            FCWState::TrackSnapshot snap;
+            snap.id = t->getId();
+            snap.bbox = t->getBBox();
+            snap.classId = t->getClassId();
+            snap.confidence = t->getConfidence();
+            snap.velocity = t->getVelocity();
+            snap.scaleVelocity = t->getScaleVelocity();
+            snap.state = t->getState();
+            snap.age = t->getAge();
+            snap.history = t->getHistory();
+            result.trackSnapshots.push_back(std::move(snap));
+        }
+        result.distances = std::move(distances);
+        result.speeds = std::move(speeds);
+        result.ttcs = std::move(ttcs);
+        result.risks = std::move(risks);
+        result.highestRisk = riskAssessor_.getHighestRisk();
+        result.fps = timer_.getFPS();
+        state_.setFrameResult(std::move(result));
     }
 
     LOG_INFO("ThreadedPipeline", "Processing thread ended");
@@ -259,36 +291,30 @@ void ThreadedPipeline::displayThread() {
     int lastFrameId = -1;
 
     while (running_.load() && !state_.isStopRequested()) {
-        int currentFrameId = state_.getFrameId();
-        if (currentFrameId == lastFrameId) {
+        // Single locked read of the whole bundle: the frame shown below is
+        // always the exact one the tracks/TTC/risk data were computed from
+        // (see FCWState::FrameResult), never a mix of two processing cycles.
+        FCWState::FrameResult result = state_.getFrameResult();
+        if (result.frameId == lastFrameId || result.frame.empty()) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
             continue;
         }
-        lastFrameId = currentFrameId;
-
-        cv::Mat frame = state_.getCurrentFrame();
-        if (frame.empty()) continue;
+        lastFrameId = result.frameId;
+        cv::Mat frame = result.frame;
 
         // Warning
         if (cfg.enableWarning) {
-            RiskAssessment highest = state_.getHighestRisk();
-            if (highest.level > RiskLevel::SAFE) {
-                warningSystem_.trigger(highest);
+            if (result.highestRisk.level > RiskLevel::SAFE) {
+                warningSystem_.trigger(result.highestRisk);
             }
         }
 
         // Visualization - need to reconstruct track pointers from snapshots
         // We draw directly using the snapshot data
         if (cfg.enableVisualization) {
-            auto distances = state_.getDistances();
-            auto speeds = state_.getSpeeds();
-            auto ttcs = state_.getTTCs();
-            auto risks = state_.getRisks();
-            auto snapshots = state_.getTrackSnapshots();
-            double fps = state_.getFPS();
-
             // Draw using snapshot data directly
-            drawFromSnapshots(frame, snapshots, distances, speeds, ttcs, risks, fps);
+            drawFromSnapshots(frame, result.trackSnapshots, result.distances,
+                               result.speeds, result.ttcs, result.risks, result.fps);
 
             // Display: native aspect for video, 1024x600 for camera
             if (cfg.inputType == "camera") {
@@ -340,13 +366,7 @@ void ThreadedPipeline::drawFromSnapshots(
     // Risk overlay
     if (highestRisk.level > RiskLevel::SAFE) {
         cv::Mat overlay = frame.clone();
-        cv::Scalar color;
-        switch (highestRisk.level) {
-            case RiskLevel::CAUTION:  color = cv::Scalar(0, 255, 255); break;
-            case RiskLevel::DANGER:   color = cv::Scalar(0, 165, 255); break;
-            case RiskLevel::CRITICAL: color = cv::Scalar(0, 0, 255); break;
-            default: color = cv::Scalar(0, 255, 0); break;
-        }
+        cv::Scalar color = riskLevelColor(highestRisk.level);
         int barH = 30;
         cv::rectangle(overlay, cv::Rect(0, 0, frame.cols, barH), color, -1);
         cv::rectangle(overlay, cv::Rect(0, frame.rows - barH, frame.cols, barH), color, -1);
@@ -379,11 +399,7 @@ void ThreadedPipeline::drawFromSnapshots(
 
         // Override with risk color if danger/critical
         if (riskLevel >= RiskLevel::DANGER) {
-            switch (riskLevel) {
-                case RiskLevel::DANGER:   color = cv::Scalar(0, 165, 255); break;
-                case RiskLevel::CRITICAL: color = cv::Scalar(0, 0, 255); break;
-                default: break;
-            }
+            color = riskLevelColor(riskLevel);
         }
 
         cv::Rect rect = snap.bbox.toRect();

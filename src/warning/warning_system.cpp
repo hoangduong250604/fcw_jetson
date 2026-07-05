@@ -173,6 +173,14 @@ void WarningSystem::warningThreadFunc() {
 // Audio Playback (Cross-Platform)
 // ==============================================================================
 void WarningSystem::playAudio(RiskLevel level) {
+    // CAUTION intentionally plays no sound: it fires frequently in normal
+    // traffic (the whole point of a "monitor, not yet dangerous" level), and
+    // production ADAS/FCW products generally reserve audible alerts for
+    // DANGER/CRITICAL to avoid alert fatigue from constant CAUTION chirps.
+    // Cooldown bookkeeping upstream is untouched — this just makes CAUTION
+    // a silent no-op here.
+    if (level == RiskLevel::CAUTION) return;
+
 #ifdef _WIN32
     // Windows: Use Beep() for instant tonal alerts
     // Different frequencies/durations per risk level
@@ -185,10 +193,6 @@ void WarningSystem::playAudio(RiskLevel level) {
         case RiskLevel::DANGER:
             freq = config_.dangerFreqHz;
             dur = config_.dangerDurationMs;
-            break;
-        case RiskLevel::CAUTION:
-            freq = config_.cautionFreqHz;
-            dur = config_.cautionDurationMs;
             break;
         default:
             return;
@@ -208,7 +212,6 @@ void WarningSystem::playAudio(RiskLevel level) {
     switch (level) {
         case RiskLevel::CRITICAL: soundFile = config_.criticalSound; break;
         case RiskLevel::DANGER:   soundFile = config_.dangerSound; break;
-        case RiskLevel::CAUTION:  soundFile = config_.cautionSound; break;
         default: return;
     }
 

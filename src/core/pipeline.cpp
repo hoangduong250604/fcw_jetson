@@ -23,6 +23,7 @@
   #include <yaml-cpp/yaml.h>
 #endif
 #include <iostream>
+#include <algorithm>
 #include <experimental/filesystem>
 
 namespace fs = std::experimental::filesystem;
@@ -68,10 +69,10 @@ bool Pipeline::loadConfig(const std::string& systemConfigPath,
         config_.enableWarning = pipeline["enable_warning"].as<bool>(true);
         config_.enableVisualization = pipeline["enable_visualization"].as<bool>(true);
 
-        // Performance config
-        if (sys["performance"]) {
-            detectInterval_ = sys["performance"]["detect_interval"].as<int>(2);
-        }
+        // Performance: detect_interval (clamped >=1 to avoid a modulo-by-zero
+        // in processFrame(); default 1 = detect every frame, unchanged from
+        // all prior tested/published behavior)
+        config_.detectInterval = std::max(1, sys["performance"]["detect_interval"].as<int>(1));
 
         // Detection config
         auto det = sysConfig["detection"];
@@ -140,7 +141,31 @@ bool Pipeline::loadConfig(const std::string& systemConfigPath,
             config_.riskConfig.cautionTTC = warn["ttc"]["caution_threshold"].as<float>(5.0f);
             config_.riskConfig.enableSmoothing = warn["risk"]["enable_smoothing"].as<bool>(true);
             config_.riskConfig.smoothingWindow = warn["risk"]["smoothing_window"].as<int>(5);
+
             config_.warningConfig.audioEnabled = warn["audio"]["enabled"].as<bool>(true);
+            config_.warningConfig.soundsDir = warn["audio"]["sounds_dir"].as<std::string>(config_.warningConfig.soundsDir);
+            config_.warningConfig.criticalSound = warn["audio"]["critical_sound"].as<std::string>(config_.warningConfig.criticalSound);
+            config_.warningConfig.dangerSound = warn["audio"]["danger_sound"].as<std::string>(config_.warningConfig.dangerSound);
+            // No caution_sound: CAUTION intentionally plays no audio (see warning_system.cpp)
+
+            if (warn["visual"]) {
+                auto vis = warn["visual"];
+                config_.visConfig.overlayAlpha = vis["overlay_alpha"].as<float>(config_.visConfig.overlayAlpha);
+                config_.visConfig.showDistance = vis["show_distance"].as<bool>(config_.visConfig.showDistance);
+                config_.visConfig.showTTC = vis["show_ttc"].as<bool>(config_.visConfig.showTTC);
+                config_.visConfig.showSpeed = vis["show_speed"].as<bool>(config_.visConfig.showSpeed);
+                auto readColor = [&](const char* key, cv::Scalar fallback) -> cv::Scalar {
+                    auto node = vis[key];
+                    if (node && node.size() == 3) {
+                        return cv::Scalar(node[0].as<double>(), node[1].as<double>(), node[2].as<double>());
+                    }
+                    return fallback;
+                };
+                config_.visConfig.colorSafe = readColor("color_safe", config_.visConfig.colorSafe);
+                config_.visConfig.colorCaution = readColor("color_caution", config_.visConfig.colorCaution);
+                config_.visConfig.colorDanger = readColor("color_danger", config_.visConfig.colorDanger);
+                config_.visConfig.colorCritical = readColor("color_critical", config_.visConfig.colorCritical);
+            }
         }
 
         // Traffic sign/light secondary detector config
@@ -347,19 +372,38 @@ bool Pipeline::processFrame() {
         }
     }
 
-    // ---- 2. Detection ----
+    // ---- 2. Detection (every frame by default; every Nth if detectInterval
+    //         is explicitly configured > 1) ----
     DetectionResult detections;
+    bool detectionRanThisFrame = false;
     if (config_.enableDetection) {
-        utils::ScopedTimer st(timer_, "detection");
-        detections = detector_.detect(frame);
-        detections.frameId = frameCount_;
+        bool shouldRunDetector = ((frameCount_ - 1) % config_.detectInterval == 0);
+        if (shouldRunDetector) {
+            utils::ScopedTimer st(timer_, "detection");
+            try {
+                detections = detector_.detect(frame);
+            } catch (const std::exception& e) {
+                LOG_ERROR("Pipeline", std::string("Detector threw, skipping this frame's detections: ") + e.what());
+                detections = DetectionResult();
+            }
+            detections.frameId = frameCount_;
+            detectionRanThisFrame = true;
+        }
     }
 
     // ---- 3. Tracking ----
     std::vector<Track*> activeTracks;
     if (config_.enableTracking) {
         utils::ScopedTimer st(timer_, "tracking");
-        activeTracks = tracker_.update(detections);
+        if (config_.enableDetection && !detectionRanThisFrame) {
+            // detect_interval > 1 and this frame's detector run was skipped:
+            // advance tracks via Kalman-only prediction, not penalized as missed.
+            activeTracks = tracker_.predictOnly();
+        } else {
+            // Detection fully disabled (existing behavior: tracks age out via
+            // markMissed on empty detections) or the detector did run this frame.
+            activeTracks = tracker_.update(detections);
+        }
     }
 
     // ---- 4. Distance Estimation ----

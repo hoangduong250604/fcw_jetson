@@ -118,6 +118,18 @@ std::vector<Track*> ObjectTracker::update(const DetectionResult& detections) {
 }
 
 // ==============================================================================
+// Predict Only (for frame skipping - no association, no lost penalty)
+// ==============================================================================
+std::vector<Track*> ObjectTracker::predictOnly() {
+    for (auto& track : tracks_) {
+        if (!track->isDeleted()) {
+            track->predict();
+        }
+    }
+    return getActiveTracks();
+}
+
+// ==============================================================================
 // Cost Matrix Computation
 // ==============================================================================
 std::vector<std::vector<float>> ObjectTracker::computeCostMatrix(
@@ -140,56 +152,6 @@ std::vector<std::vector<float>> ObjectTracker::computeCostMatrix(
     }
 
     return cost;
-}
-
-// ==============================================================================
-// Greedy Assignment (fast approximation of Hungarian)
-// ==============================================================================
-std::vector<std::pair<int, int>> ObjectTracker::greedyAssignment(
-    const std::vector<std::vector<float>>& costMatrix) const {
-
-    std::vector<std::pair<int, int>> matches;
-    if (costMatrix.empty()) return matches;
-
-    int numTracks = static_cast<int>(costMatrix.size());
-    int numDets = static_cast<int>(costMatrix[0].size());
-
-    // Collect all (cost, trackIdx, detIdx) and sort by cost ascending
-    struct CostEntry {
-        float cost;
-        int trackIdx;
-        int detIdx;
-    };
-
-    std::vector<CostEntry> entries;
-    entries.reserve(numTracks * numDets);
-
-    for (int i = 0; i < numTracks; i++) {
-        for (int j = 0; j < numDets; j++) {
-            entries.push_back({costMatrix[i][j], i, j});
-        }
-    }
-
-    std::sort(entries.begin(), entries.end(),
-              [](const CostEntry& a, const CostEntry& b) {
-                  return a.cost < b.cost;
-              });
-
-    std::set<int> usedTracks, usedDets;
-
-    for (const auto& entry : entries) {
-        if (usedTracks.count(entry.trackIdx) || usedDets.count(entry.detIdx)) continue;
-
-        // Only accept if IoU is above threshold (cost < 1 - iouThreshold)
-        float iou = 1.0f - entry.cost;
-        if (iou < config_.iouThreshold) continue;
-
-        matches.push_back({entry.trackIdx, entry.detIdx});
-        usedTracks.insert(entry.trackIdx);
-        usedDets.insert(entry.detIdx);
-    }
-
-    return matches;
 }
 
 // ==============================================================================

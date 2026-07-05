@@ -1,9 +1,12 @@
 // ==============================================================================
-// Traffic Sign Processor - Stub implementation
+// Traffic Sign Processor - HSV color classification (secondary-model path unused)
 // ==============================================================================
-// This processor is currently disabled. The main YOLOv8 model trained on
+// This processor is disabled by default. The main YOLOv8 model trained on
 // BDD100K already detects traffic lights (class 8) and traffic signs (class 9)
-// directly, so a secondary classifier is not needed.
+// directly, so a secondary classifier is not needed. When enabled, traffic
+// light COLOR is classified via HSV thresholding with CLAHE brightness
+// normalization (see classifyLightByHSV) — not by the unimplemented secondary
+// YOLOv8n scaffolding also present in this file (see traffic_sign_processor.h).
 // ==============================================================================
 
 #include "traffic_sign_processor.h"
@@ -24,22 +27,20 @@ bool TrafficSignProcessor::init(const TrafficSignConfig& config) {
         return false;
     }
 
-    // Check if model file exists
-    std::ifstream f(config_.modelPath);
-    if (!f.good()) {
-        LOG_INFO("TrafficSign", "Secondary model not found: " + config_.modelPath + " (disabled)");
-        initialized_ = false;
-        return false;
+    // NOTE: the active classifier is HSV-based (classifyLightByHSV) and
+    // needs neither a model file nor labels — those only matter for the
+    // unimplemented secondary-model scaffolding (see header). Previously
+    // this function required config_.modelPath to exist even though nothing
+    // ever loaded it for inference, which meant enabling this processor did
+    // nothing unless an unrelated file happened to be present. Labels are
+    // loaded best-effort for that future path but are not required.
+    if (!config_.labelsPath.empty()) {
+        loadLabels(config_.labelsPath);
     }
 
-    // Load labels
-    if (!loadLabels(config_.labelsPath)) {
-        LOG_WARNING("TrafficSign", "Failed to load labels: " + config_.labelsPath);
-        initialized_ = false;
-        return false;
-    }
+    clahe_ = cv::createCLAHE(2.0, cv::Size(4, 4));
 
-    LOG_INFO("TrafficSign", "Traffic sign processor initialized (secondary model)");
+    LOG_INFO("TrafficSign", "Traffic sign processor initialized (HSV classifier)");
     initialized_ = true;
     return true;
 }
@@ -126,6 +127,17 @@ TrafficLightState TrafficSignProcessor::classifyLightByHSV(const cv::Mat& crop) 
 
     cv::Mat hsv;
     cv::cvtColor(crop, hsv, cv::COLOR_BGR2HSV);
+
+    // Normalize brightness/exposure before thresholding: CLAHE on the V
+    // channel only (hue/saturation, which encode color, are untouched).
+    // Fixed HSV thresholds are known to be sensitive to glare, backlight,
+    // and over/under-exposed crops — this reduces (does not eliminate) that.
+    if (clahe_) {
+        std::vector<cv::Mat> hsvChannels(3);
+        cv::split(hsv, hsvChannels);
+        clahe_->apply(hsvChannels[2], hsvChannels[2]);
+        cv::merge(hsvChannels, hsv);
+    }
 
     // Count pixels in red, yellow, green ranges
     cv::Mat redMask1, redMask2, yellowMask, greenMask;

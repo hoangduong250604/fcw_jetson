@@ -73,8 +73,10 @@ public:
 
     /**
      * Estimate distance for a single detection bbox.
+     * @param classId  BDD100K class id (0-9) to select a per-class reference
+     *                 height; pass -1 (default) to use config_.referenceHeight.
      */
-    float estimateSingle(const utils::BBox& bbox) const;
+    float estimateSingle(const utils::BBox& bbox, int classId = -1) const;
 
     /** Set camera model */
     void setCameraModel(const CameraModel& model);
@@ -92,7 +94,12 @@ public:
     DistanceInfo getDistance(int trackId) const;
 
 private:
-    float computeDistance(const utils::BBox& bbox) const;
+    float computeDistance(const utils::BBox& bbox, int classId) const;
+
+    /** Per-class reference height (meters); falls back to config_.referenceHeight
+     *  when classId is out of the known [0,10) range. Shared by estimate() and
+     *  computeDistance()/estimateSingle() so both APIs agree. */
+    float referenceHeightForClass(int classId) const;
 
     DistanceConfig config_;
     CameraModel cameraModel_;

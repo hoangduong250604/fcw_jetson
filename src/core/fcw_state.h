@@ -28,31 +28,6 @@ class FCWState {
 public:
     FCWState() = default;
 
-    // ---- Frame ----
-    void setCurrentFrame(const cv::Mat& frame) {
-        std::lock_guard<std::mutex> lock(frameMutex_);
-        frame.copyTo(currentFrame_);
-        frameId_++;
-    }
-
-    cv::Mat getCurrentFrame() const {
-        std::lock_guard<std::mutex> lock(frameMutex_);
-        return currentFrame_.clone();
-    }
-
-    int getFrameId() const { return frameId_.load(); }
-
-    // ---- Detection Results ----
-    void setDetections(const DetectionResult& dets) {
-        std::lock_guard<std::mutex> lock(detectionMutex_);
-        detections_ = dets;
-    }
-
-    DetectionResult getDetections() const {
-        std::lock_guard<std::mutex> lock(detectionMutex_);
-        return detections_;
-    }
-
     // ---- Active Track Data (snapshot) ----
     struct TrackSnapshot {
         int id;
@@ -66,129 +41,52 @@ public:
         std::vector<utils::BBox> history;
     };
 
-    void setTrackSnapshots(const std::vector<Track*>& tracks) {
-        std::lock_guard<std::mutex> lock(trackMutex_);
-        trackSnapshots_.clear();
-        for (const Track* t : tracks) {
-            TrackSnapshot snap;
-            snap.id = t->getId();
-            snap.bbox = t->getBBox();
-            snap.classId = t->getClassId();
-            snap.confidence = t->getConfidence();
-            snap.velocity = t->getVelocity();
-            snap.scaleVelocity = t->getScaleVelocity();
-            snap.state = t->getState();
-            snap.age = t->getAge();
-            snap.history = t->getHistory();
-            trackSnapshots_.push_back(snap);
-        }
+    /**
+     * Bundled output of ONE processing-thread cycle: the exact frame that was
+     * analyzed plus every downstream result computed from it. All fields are
+     * published together under a single lock (setFrameResult/getFrameResult)
+     * so a consumer (the display thread) can never see a mix of, e.g., the
+     * newest captured frame paired with TTC/risk data from an older cycle —
+     * a real correctness issue for a collision-warning HUD, since the
+     * capture thread runs at full camera FPS while processing is
+     * detection-bound and therefore slower.
+     */
+    struct FrameResult {
+        int frameId = -1;
+        cv::Mat frame;
+        DetectionResult detections;
+        std::vector<TrackSnapshot> trackSnapshots;
+        std::unordered_map<int, DistanceInfo> distances;
+        std::unordered_map<int, SpeedInfo> speeds;
+        std::unordered_map<int, TTCInfo> ttcs;
+        std::unordered_map<int, RiskAssessment> risks;
+        RiskAssessment highestRisk;
+        double fps = 0.0;
+    };
+
+    void setFrameResult(FrameResult&& result) {
+        std::lock_guard<std::mutex> lock(resultMutex_);
+        result_ = std::move(result);
     }
 
-    std::vector<TrackSnapshot> getTrackSnapshots() const {
-        std::lock_guard<std::mutex> lock(trackMutex_);
-        return trackSnapshots_;
+    FrameResult getFrameResult() const {
+        std::lock_guard<std::mutex> lock(resultMutex_);
+        return result_;
     }
 
-    // ---- Distance ----
-    void setDistances(const std::unordered_map<int, DistanceInfo>& dists) {
-        std::lock_guard<std::mutex> lock(distanceMutex_);
-        distances_ = dists;
+    int getResultFrameId() const {
+        std::lock_guard<std::mutex> lock(resultMutex_);
+        return result_.frameId;
     }
-
-    std::unordered_map<int, DistanceInfo> getDistances() const {
-        std::lock_guard<std::mutex> lock(distanceMutex_);
-        return distances_;
-    }
-
-    // ---- Speed ----
-    void setSpeeds(const std::unordered_map<int, SpeedInfo>& speeds) {
-        std::lock_guard<std::mutex> lock(speedMutex_);
-        speeds_ = speeds;
-    }
-
-    std::unordered_map<int, SpeedInfo> getSpeeds() const {
-        std::lock_guard<std::mutex> lock(speedMutex_);
-        return speeds_;
-    }
-
-    // ---- TTC ----
-    void setTTCs(const std::unordered_map<int, TTCInfo>& ttcs) {
-        std::lock_guard<std::mutex> lock(ttcMutex_);
-        ttcs_ = ttcs;
-    }
-
-    std::unordered_map<int, TTCInfo> getTTCs() const {
-        std::lock_guard<std::mutex> lock(ttcMutex_);
-        return ttcs_;
-    }
-
-    // ---- Risk ----
-    void setRisks(const std::unordered_map<int, RiskAssessment>& risks) {
-        std::lock_guard<std::mutex> lock(riskMutex_);
-        risks_ = risks;
-    }
-
-    std::unordered_map<int, RiskAssessment> getRisks() const {
-        std::lock_guard<std::mutex> lock(riskMutex_);
-        return risks_;
-    }
-
-    void setHighestRisk(const RiskAssessment& risk) {
-        std::lock_guard<std::mutex> lock(riskMutex_);
-        highestRisk_ = risk;
-    }
-
-    RiskAssessment getHighestRisk() const {
-        std::lock_guard<std::mutex> lock(riskMutex_);
-        return highestRisk_;
-    }
-
-    // ---- Performance ----
-    void setFPS(double fps) { fps_.store(fps); }
-    double getFPS() const { return fps_.load(); }
-
-    void setDetectionTimeMs(double ms) { detectionTimeMs_.store(ms); }
-    double getDetectionTimeMs() const { return detectionTimeMs_.load(); }
 
     // ---- Pipeline Control ----
     void requestStop() { stopRequested_.store(true); }
     bool isStopRequested() const { return stopRequested_.load(); }
-    void reset() { stopRequested_.store(false); frameId_.store(0); }
+    void reset() { stopRequested_.store(false); }
 
 private:
-    // Frame
-    mutable std::mutex frameMutex_;
-    cv::Mat currentFrame_;
-    std::atomic<int> frameId_{0};
-
-    // Detection
-    mutable std::mutex detectionMutex_;
-    DetectionResult detections_;
-
-    // Tracking
-    mutable std::mutex trackMutex_;
-    std::vector<TrackSnapshot> trackSnapshots_;
-
-    // Distance
-    mutable std::mutex distanceMutex_;
-    std::unordered_map<int, DistanceInfo> distances_;
-
-    // Speed
-    mutable std::mutex speedMutex_;
-    std::unordered_map<int, SpeedInfo> speeds_;
-
-    // TTC
-    mutable std::mutex ttcMutex_;
-    std::unordered_map<int, TTCInfo> ttcs_;
-
-    // Risk
-    mutable std::mutex riskMutex_;
-    std::unordered_map<int, RiskAssessment> risks_;
-    RiskAssessment highestRisk_;
-
-    // Performance
-    std::atomic<double> fps_{0.0};
-    std::atomic<double> detectionTimeMs_{0.0};
+    mutable std::mutex resultMutex_;
+    FrameResult result_;
 
     // Control
     std::atomic<bool> stopRequested_{false};
