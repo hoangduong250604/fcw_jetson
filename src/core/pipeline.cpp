@@ -70,9 +70,9 @@ bool Pipeline::loadConfig(const std::string& systemConfigPath,
         config_.enableVisualization = pipeline["enable_visualization"].as<bool>(true);
 
         // Performance: detect_interval (clamped >=1 to avoid a modulo-by-zero
-        // in processFrame(); default 1 = detect every frame, unchanged from
-        // all prior tested/published behavior)
-        config_.detectInterval = std::max(1, sys["performance"]["detect_interval"].as<int>(1));
+        // in processFrame(); fallback of 2 matches this member's own
+        // pre-existing default from before this was wired up)
+        config_.detectInterval = std::max(1, sys["performance"]["detect_interval"].as<int>(2));
 
         // Detection config
         auto det = sysConfig["detection"];

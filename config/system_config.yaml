@@ -38,12 +38,12 @@ system:
     # Target FPS (0 = unlimited)
     target_fps: 15
     # Detection skip: run detection every N frames (1=every frame, 2=every other, 3=every 3rd)
-    # Now actually wired up (previously ignored regardless of this value —
-    # the detector ran every frame no matter what). Default kept at 1 to
-    # preserve the exact behavior all published results were measured on;
-    # raise it only if you deliberately want to trade accuracy for FPS
-    # (untested on Jetson hardware — verify before trusting it in the field).
-    detect_interval: 1
+    # Now actually wired up (previously this value was parsed but never read
+    # in processFrame(), so the detector ran every frame regardless). Kept at
+    # 2, matching this file's own pre-existing value, since Jetson Nano's
+    # compute budget is the reason to skip frames in the first place — verify
+    # on hardware before trusting the accuracy/FPS tradeoff in the field.
+    detect_interval: 2
     # Use GPU acceleration
     use_gpu: true
     # GPU device ID
